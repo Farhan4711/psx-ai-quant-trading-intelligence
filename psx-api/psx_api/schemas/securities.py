@@ -72,3 +72,79 @@ class OhlcvListResponse(BaseModel):
     interval: str
     items: list[OhlcvResponse]
     total: int
+
+
+class FundamentalsResponse(BaseModel):
+    symbol: str
+    # Computed from OHLCV
+    week_52_high: Decimal | None
+    week_52_low: Decimal | None
+    avg_volume_30d: int | None
+    # From securities table
+    market_cap_pkr: int | None
+    shares_outstanding: int | None
+    # Placeholders — populated once financial statement data is available (Phase 2)
+    pe_ratio: Decimal | None = None
+    pb_ratio: Decimal | None = None
+    eps: Decimal | None = None
+    roe: Decimal | None = None
+    dividend_yield: Decimal | None = None
+
+
+class AnnouncementResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    symbol: str
+    action_type: str
+    announcement_date: date
+    ex_date: date | None
+    record_date: date | None
+    payment_date: date | None
+    amount_per_share: Decimal | None
+    ratio_numerator: int | None
+    ratio_denominator: int | None
+
+
+class AnnouncementsListResponse(BaseModel):
+    symbol: str
+    items: list[AnnouncementResponse]
+    total: int
+
+
+class IndexPerformance(BaseModel):
+    name: str           # "KSE-100", "KSE-30", "KMI-30"
+    constituent_count: int
+    # Latest trading day stats — None until OHLCV data is loaded
+    last_close_date: date | None
+    change_1d_pct: Decimal | None
+    change_1w_pct: Decimal | None
+    change_1m_pct: Decimal | None
+    change_ytd_pct: Decimal | None
+
+
+class WatchlistItemResponse(BaseModel):
+    symbol: str
+    company_name: str
+    sector: str
+    is_kmi_compliant: bool
+    note: str | None
+    sort_order: int
+    added_at: datetime
+
+
+class WatchlistReorderRequest(BaseModel):
+    symbols: list[str] = Field(..., min_length=0, max_length=500)
+
+
+class Quote(BaseModel):
+    symbol: str
+    last_close: Decimal | None
+    prev_close: Decimal | None
+    last_date: date | None
+    change: Decimal | None
+    change_pct: Decimal | None
+
+
+class QuotesResponse(BaseModel):
+    items: list[Quote]

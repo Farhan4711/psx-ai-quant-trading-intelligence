@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     allowed_origins: str = "http://localhost:3000"
 
+    # Email (SMTP)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@psxai.com"
+    smtp_use_tls: bool = True
+    # Frontend URL for building email links
+    frontend_url: str = "http://localhost:3000"
+
     # Sentry
     sentry_dsn: str = ""
 

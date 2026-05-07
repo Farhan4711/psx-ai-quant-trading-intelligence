@@ -46,6 +46,8 @@ def _configure_logging() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("psx-api starting", environment=settings.environment)
     yield
+    from psx_api.redis_client import close_redis
+    await close_redis()
     logger.info("psx-api shutting down")
 
 
@@ -70,8 +72,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from psx_api.routers import health, securities
+    from psx_api.routers import auth, health, securities
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(securities.router)
 
     return app

@@ -24,6 +24,8 @@ dependencies = [
     "structlog==24.4.0",
     "python-multipart==0.0.18",
     "email-validator==2.2.0",
+    "pyotp==2.9.0",
+    "aiosmtplib==3.0.1",
 ]
 
 [project.optional-dependencies]
@@ -76,7 +78,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "passlib.*", "jose.*"]
+module = ["celery.*", "passlib.*", "jose.*", "pyotp.*", "aiosmtplib.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "psx-ingest"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "celery==5.4.0",
+    "redis==5.2.1",
+    "sqlalchemy[asyncio]==2.0.36",
+    "asyncpg==0.30.0",
+    "pydantic==2.10.2",
+    "pydantic-settings==2.6.1",
+    "httpx==0.28.0",
+    "beautifulsoup4==4.12.3",
+    "lxml==5.3.0",
+    "pandas==2.2.3",
+    "pandas-ta==0.3.14b",
+    "sentry-sdk[celery]==2.19.0",
+    "structlog==24.4.0",
+    "tenacity==9.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "ruff==0.8.3",
+    "mypy==1.13.0",
+    "pandas-stubs==2.2.3.240807",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["psx_ingest"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "S", "A", "C4", "DTZ", "T20", "RUF"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+
+[[tool.mypy.overrides]]
+module = ["celery.*", "bs4.*", "pandas_ta.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["psx_ingest"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

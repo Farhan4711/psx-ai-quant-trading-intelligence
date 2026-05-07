@@ -21,8 +21,15 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python venv lib dirs — but NOT the frontend src/lib/ source code
 lib64/
+# Exclude venv lib directories only at repo root or inside Python service dirs
+psx-api/lib/
+psx-api/lib64/
+psx-ingest/lib/
+psx-ingest/lib64/
+psx-inference/lib/
+psx-inference/lib64/
 parts/
 sdist/
 var/

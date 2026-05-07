@@ -24,7 +24,7 @@ celery_app = Celery(
     "psx_ingest",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["psx_ingest.tasks"],
+    include=["psx_ingest.tasks.ohlcv", "psx_ingest.tasks.backfill", "psx_ingest.tasks.corporate_actions"],
 )
 
 celery_app.conf.update(

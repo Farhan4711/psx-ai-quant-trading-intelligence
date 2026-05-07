@@ -16,10 +16,13 @@ if config.config_file_name is not None:
 # Override the sqlalchemy URL from our settings so alembic.ini never has real credentials
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
-# Import all models here so Alembic can detect schema changes
-# from psx_api.models import *  # noqa: F401, F403 — populated in Phase 1
+# Import all models so Alembic autogenerate can detect schema changes
+from psx_api.models import Base  # noqa: F401 — side-effect import registers all models
+import psx_api.models.securities  # noqa: F401
+import psx_api.models.ohlcv  # noqa: F401
+import psx_api.models.corporate_actions  # noqa: F401
 
-target_metadata = None  # Will be replaced with Base.metadata in Phase 1
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

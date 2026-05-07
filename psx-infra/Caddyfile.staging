@@ -1,0 +1,37 @@
+# Caddyfile — Staging
+# Replace staging.yourdomain.com with your actual staging subdomain.
+# Caddy auto-provisions TLS via Let's Encrypt.
+
+staging.{$DOMAIN} {
+    # Reverse proxy to FastAPI
+    handle /api/* {
+        reverse_proxy psx-api:8000
+    }
+
+    # Health check endpoint (no auth)
+    handle /health {
+        reverse_proxy psx-api:8000
+    }
+
+    # All other routes → Next.js frontend on Vercel (or local if running locally)
+    handle {
+        reverse_proxy {$FRONTEND_INTERNAL_URL:http://localhost:3000}
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    log {
+        output file /var/log/caddy/staging-access.log {
+            roll_size 50mb
+            roll_keep 5
+        }
+        format json
+    }
+}

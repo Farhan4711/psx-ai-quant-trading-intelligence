@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "PSX Dev",
+      "Group": "Local",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "psx_dev",
+      "Username": "psx_user",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass"
+    }
+  }
+}

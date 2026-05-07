@@ -1,0 +1,67 @@
+name: psx-dev
+
+# Local development stack — Postgres+TimescaleDB, Redis, pgAdmin
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# Stop:  docker compose -f docker-compose.dev.yml down
+# Wipe:  docker compose -f docker-compose.dev.yml down -v  (destroys volumes)
+
+services:
+
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: psx_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: psx_user
+      POSTGRES_PASSWORD: psx_pass_dev        # dev only — never use in prod
+      POSTGRES_MULTIPLE_DATABASES: psx_dev,psx_test
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init-scripts/01-create-databases.sh:/docker-entrypoint-initdb.d/01-create-databases.sh:ro
+      - ./init-scripts/02-enable-timescaledb.sql:/docker-entrypoint-initdb.d/02-enable-timescaledb.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U psx_user -d psx_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: psx_redis_dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: psx_pgadmin_dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+      - ./init-scripts/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  pgadmin_dev_data:

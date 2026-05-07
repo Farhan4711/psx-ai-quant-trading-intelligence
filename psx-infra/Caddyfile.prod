@@ -1,0 +1,53 @@
+# Caddyfile — Production
+# Replace yourdomain.com with your actual domain.
+
+{$DOMAIN} {
+    handle /api/* {
+        reverse_proxy psx-api:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+
+    handle /health {
+        reverse_proxy psx-api:8000
+    }
+
+    # Next.js frontend is on Vercel — proxy or redirect
+    handle {
+        # Option A: Vercel handles the frontend, API is on this server
+        # Remove this block if using a separate frontend URL
+        respond "PSX API Server" 200
+    }
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+    log {
+        output file /var/log/caddy/prod-access.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+}
+
+# API subdomain (optional — lets frontend call api.yourdomain.com)
+api.{$DOMAIN} {
+    reverse_proxy psx-api:8000 {
+        header_up X-Real-IP {remote_host}
+    }
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
+}

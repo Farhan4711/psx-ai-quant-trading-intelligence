@@ -1,0 +1,95 @@
+name: psx-observability
+
+# Observability stack — Prometheus + Grafana + exporters
+# Run alongside staging or prod:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.observability.yml up -d
+#
+# Grafana: http://localhost:3001 (change port in prod — put behind Caddy)
+# Prometheus: http://localhost:9090 (internal only — do NOT expose publicly)
+
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: psx_prometheus
+    restart: always
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - psx_internal
+      - psx_observability
+    # Intentionally not exposed on host — access via Grafana or SSH tunnel
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: psx_grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD not set}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    networks:
+      - psx_observability
+    depends_on:
+      - prometheus
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: psx_postgres_exporter
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/psx_prod?sslmode=disable"
+    networks:
+      - psx_internal
+      - psx_observability
+    depends_on:
+      - prometheus
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: psx_redis_exporter
+    restart: always
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - psx_internal
+      - psx_observability
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: psx_node_exporter
+    restart: always
+    command:
+      - "--path.rootfs=/host"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - psx_observability
+    pid: host
+
+networks:
+  psx_internal:
+    external: true
+    name: psx-prod_psx_internal
+  psx_observability:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

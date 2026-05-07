@@ -1,0 +1,199 @@
+name: psx-prod
+
+# Production stack — identical to staging with prod env vars and stricter limits
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Blue-green deploy pattern:
+#   1. Pull new images: docker compose -f docker-compose.prod.yml pull
+#   2. Recreate without downtime: docker compose -f docker-compose.prod.yml up -d --no-deps psx-api
+#   3. Verify health, then do same for psx-worker
+
+services:
+
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: psx_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: psx_prod
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./init-scripts/02-enable-timescaledb.sql:/docker-entrypoint-initdb.d/02-enable-timescaledb.sql:ro
+      - ./postgres-conf/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - psx_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d psx_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  redis:
+    image: redis:7-alpine
+    container_name: psx_redis_prod
+    restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save 3600 1 300 100 60 10000
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - psx_internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  psx-api:
+    image: ghcr.io/${GITHUB_REPO}/psx-api:${API_IMAGE_TAG}
+    container_name: psx_api_prod
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/psx_prod
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      SECRET_KEY: ${API_SECRET_KEY}
+      ENVIRONMENT: production
+      ALLOWED_ORIGINS: ${FRONTEND_URL}
+      SENTRY_DSN: ${SENTRY_DSN_API}
+      INFERENCE_SERVICE_URL: http://psx-inference:8001
+      STORAGE_ENDPOINT_URL: ${STORAGE_ENDPOINT_URL}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY}
+      STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME}
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    networks:
+      - psx_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  psx-worker:
+    image: ghcr.io/${GITHUB_REPO}/psx-ingest:${INGEST_IMAGE_TAG}
+    container_name: psx_worker_prod
+    restart: always
+    command: celery -A psx_ingest.worker worker --loglevel=info --concurrency=4
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/psx_prod
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      ENVIRONMENT: production
+      SENTRY_DSN: ${SENTRY_DSN_INGEST}
+    networks:
+      - psx_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  psx-beat:
+    image: ghcr.io/${GITHUB_REPO}/psx-ingest:${INGEST_IMAGE_TAG}
+    container_name: psx_beat_prod
+    restart: always
+    command: celery -A psx_ingest.worker beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/psx_prod
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      ENVIRONMENT: production
+    networks:
+      - psx_internal
+    depends_on:
+      - psx-worker
+
+  psx-inference:
+    image: ghcr.io/${GITHUB_REPO}/psx-inference:${INFERENCE_IMAGE_TAG}
+    container_name: psx_inference_prod
+    restart: always
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/3
+      ENVIRONMENT: production
+      SENTRY_DSN: ${SENTRY_DSN_INFERENCE}
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    networks:
+      - psx_internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: psx_caddy_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_prod_data:/data
+      - caddy_prod_config:/config
+    networks:
+      - psx_internal
+    depends_on:
+      - psx-api
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+networks:
+  psx_internal:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  caddy_prod_data:
+  caddy_prod_config:

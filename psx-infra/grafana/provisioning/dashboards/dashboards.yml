@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: PSX Dashboards
+    folder: PSX App
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

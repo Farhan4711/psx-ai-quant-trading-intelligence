@@ -1,0 +1,14 @@
+# CODEOWNERS
+# These owners are automatically requested for review on PRs.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owner — all files
+* @Farhan4711
+
+# Service-specific owners (update when team grows)
+/psx-web/       @Farhan4711
+/psx-api/       @Farhan4711
+/psx-ingest/    @Farhan4711
+/psx-inference/ @Farhan4711
+/psx-infra/     @Farhan4711
+/psx-docs/      @Farhan4711

@@ -24,7 +24,12 @@ celery_app = Celery(
     "psx_ingest",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["psx_ingest.tasks.ohlcv", "psx_ingest.tasks.backfill", "psx_ingest.tasks.corporate_actions"],
+    include=[
+        "psx_ingest.tasks.ohlcv",
+        "psx_ingest.tasks.backfill",
+        "psx_ingest.tasks.corporate_actions",
+        "psx_ingest.tasks.adjust_prices",
+    ],
 )
 
 celery_app.conf.update(
@@ -56,5 +61,10 @@ celery_app.conf.beat_schedule = {
     "ingest-corporate-actions-evening": {
         "task": "psx_ingest.tasks.corporate_actions.ingest_corporate_actions",
         "schedule": crontab(hour=17, minute=30),
+    },
+    # Adjusted-price recompute — runs after the evening corporate-actions ingest
+    "recompute-adjusted-prices": {
+        "task": "psx_ingest.tasks.adjust_prices.recompute_adjusted_prices",
+        "schedule": crontab(hour=18, minute=0),
     },
 }

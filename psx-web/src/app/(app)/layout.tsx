@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { BarChart2, BookOpen, Briefcase, FlaskConical, Grid3x3, LayoutDashboard, Search, Target } from "lucide-react";
+import { BarChart2, Bell, BookOpen, Briefcase, Calculator, FlaskConical, Grid3x3, LayoutDashboard, Search, Target } from "lucide-react";
 import { ShariahBadge } from "@/components/shariah/ShariahBadge";
 import { MobileNav } from "@/components/nav/MobileNav";
 
@@ -81,6 +81,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <span className="flex items-center gap-1.5">
                 <Grid3x3 className="h-4 w-4" />
                 Sectors
+              </span>
+            </Link>
+            <Link
+              href="/app/alerts"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span className="flex items-center gap-1.5">
+                <Bell className="h-4 w-4" />
+                Alerts
+              </span>
+            </Link>
+            <Link
+              href="/app/tax-simulator"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span className="flex items-center gap-1.5">
+                <Calculator className="h-4 w-4" />
+                Tax sim
               </span>
             </Link>
           </nav>

@@ -17,6 +17,8 @@ import { WatchlistButton } from "@/components/stocks/WatchlistButton";
 import { TradeEntryModal } from "@/components/portfolios/TradeEntryModal";
 import { IndicatorPanel } from "@/components/stocks/IndicatorPanel";
 import { SignalPanel } from "@/components/stocks/SignalPanel";
+import { SuspiciousFlag } from "@/components/stocks/SuspiciousFlag";
+import { NewsPulse } from "@/components/stocks/NewsPulse";
 import { Button } from "@/components/ui/button";
 import {
   formatDecimal,
@@ -140,6 +142,9 @@ export default function StockDetailPage() {
         </div>
       </div>
 
+      {/* ── Pump/dump alert banner (renders only when active) ───────── */}
+      <SuspiciousFlag symbol={symbol} />
+
       {/* ── Price Chart ───────────────────────────────────────────────── */}
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
@@ -211,12 +216,17 @@ export default function StockDetailPage() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="signal">Signal</TabsTrigger>
+          <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="indicators">Indicators</TabsTrigger>
           <TabsTrigger value="announcements">Announcements</TabsTrigger>
         </TabsList>
 
         <TabsContent value="signal">
           <SignalPanel symbol={symbol} />
+        </TabsContent>
+
+        <TabsContent value="news">
+          <NewsPulse symbol={symbol} />
         </TabsContent>
 
         <TabsContent value="indicators">

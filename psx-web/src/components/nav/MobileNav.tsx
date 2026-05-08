@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  Bell,
   BookOpen,
   Briefcase,
+  Calculator,
   FlaskConical,
   Grid3x3,
   LayoutDashboard,
@@ -24,6 +26,8 @@ const ITEMS = [
   { href: "/app/goals", label: "Goals", icon: Target },
   { href: "/app/backtest", label: "Backtest", icon: FlaskConical },
   { href: "/app/sectors", label: "Sectors", icon: Grid3x3 },
+  { href: "/app/alerts", label: "Alerts", icon: Bell },
+  { href: "/app/tax-simulator", label: "Tax simulator", icon: Calculator },
   { href: "/app/risk-profile", label: "Risk Profile", icon: UserCheck },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];

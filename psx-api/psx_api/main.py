@@ -73,16 +73,19 @@ def create_app() -> FastAPI:
     )
 
     from psx_api.routers import (
+        alerts,
         auth,
         backtest,
         goals,
         health,
         macro,
+        news,
         portfolios,
         predictions,
         risk,
         sectors,
         securities,
+        tax_simulator,
         watchlist,
     )
     app.include_router(health.router)
@@ -96,6 +99,9 @@ def create_app() -> FastAPI:
     app.include_router(backtest.router)
     app.include_router(predictions.router)
     app.include_router(macro.router)
+    app.include_router(news.router)
+    app.include_router(alerts.router)
+    app.include_router(tax_simulator.router)
 
     return app
 

@@ -2,10 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { fetchSecurities, fetchSectors } from "@/lib/api/securities";
+import { fetchCurrentUser } from "@/lib/api/auth";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useState } from "react";
 import { Search } from "lucide-react";
+import { SkeletonRow } from "@/components/ui/skeleton";
 
 export default function StocksPage() {
   const [page, setPage] = useState(1);
@@ -15,15 +17,31 @@ export default function StocksPage() {
   const [kmiOnly, setKmiOnly] = useState(false);
   const [kse100Only, setKse100Only] = useState(false);
 
+  // Shariah Mode forces KMI-only filtering, regardless of the user's checkbox
+  const { data: user } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: fetchCurrentUser,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const effectiveKmiOnly = kmiOnly || !!user?.shariah_mode;
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["securities", page, debouncedSearch, sector, kmiOnly, kse100Only],
+    queryKey: [
+      "securities",
+      page,
+      debouncedSearch,
+      sector,
+      effectiveKmiOnly,
+      kse100Only,
+    ],
     queryFn: () =>
       fetchSecurities({
         page,
         page_size: 50,
         search: debouncedSearch || undefined,
         sector: sector || undefined,
-        kmi_only: kmiOnly || undefined,
+        kmi_only: effectiveKmiOnly || undefined,
         kse100_only: kse100Only || undefined,
       }),
   });
@@ -98,7 +116,11 @@ export default function StocksPage() {
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="flex h-48 items-center justify-center text-sm text-gray-500">Loading…</div>
+          <div className="divide-y divide-gray-100">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonRow key={i} cols={4} />
+            ))}
+          </div>
         ) : isError ? (
           <div className="flex h-48 items-center justify-center text-sm text-red-500">Failed to load securities.</div>
         ) : (

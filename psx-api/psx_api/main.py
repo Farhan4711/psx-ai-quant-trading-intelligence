@@ -72,11 +72,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from psx_api.routers import auth, health, securities, watchlist
+    from psx_api.routers import auth, health, portfolios, sectors, securities, watchlist
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(securities.router)
     app.include_router(watchlist.router)
+    app.include_router(portfolios.router)
+    app.include_router(sectors.router)
 
     return app
 

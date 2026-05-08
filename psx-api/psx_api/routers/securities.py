@@ -16,6 +16,7 @@ from psx_api.schemas.securities import (
     SecuritiesListResponse,
     SecurityResponse,
 )
+from psx_api.services.indicator_service import SUPPORTED, IndicatorService
 from psx_api.services.securities_service import SecuritiesService
 
 router = APIRouter(prefix="/api/v1", tags=["securities"])
@@ -116,3 +117,25 @@ async def list_sectors(service: ServiceDep) -> list[str]:
 @router.get("/indices", response_model=list[IndexPerformance])
 async def get_indices(service: ServiceDep) -> list[IndexPerformance]:
     return await service.get_indices()
+
+
+@router.get("/indicators/list")
+async def list_supported_indicators() -> list[dict]:
+    return SUPPORTED
+
+
+@router.get("/securities/{symbol}/indicators/{indicator}")
+async def compute_indicator(
+    symbol: str,
+    indicator: str,
+    db: DbDep,
+    redis: RedisDep,
+) -> dict:
+    valid = {s["key"] for s in SUPPORTED}
+    if indicator not in valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown indicator '{indicator}'. Valid: {sorted(valid)}",
+        )
+    service = IndicatorService(db, redis)
+    return await service.compute_indicator(symbol.upper(), indicator)  # type: ignore[arg-type]

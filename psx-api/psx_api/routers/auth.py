@@ -17,6 +17,7 @@ from psx_api.schemas.auth import (
     TotpSetupResponse,
     TotpVerifyRequest,
     UserResponse,
+    UserSettingsUpdate,
     VerifyEmailRequest,
 )
 from psx_api.services.auth_service import AuthError, AuthService
@@ -149,6 +150,24 @@ async def logout(
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: CurrentUser) -> UserResponse:
     return UserResponse.from_user(current_user)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UserSettingsUpdate,
+    current_user: CurrentUser,
+    db: DbDep,
+) -> UserResponse:
+    from psx_api.models.users import User
+    user: User = current_user  # type: ignore[assignment]
+    if body.shariah_mode is not None:
+        user.shariah_mode = body.shariah_mode
+    if body.is_filer is not None:
+        user.is_filer = body.is_filer
+    if body.full_name is not None:
+        user.full_name = body.full_name
+    await db.flush()
+    return UserResponse.from_user(user)
 
 
 @router.post("/forgot-password")

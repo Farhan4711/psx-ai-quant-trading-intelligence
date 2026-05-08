@@ -160,6 +160,28 @@ export const fetchAnnouncements = (symbol: string, limit = 50) =>
 export const fetchIndices = () => apiFetch<IndexPerformance[]>("/api/v1/indices");
 export const fetchSectors = () => apiFetch<string[]>("/api/v1/sectors");
 
+export interface IndicatorMeta {
+  key: string;
+  label: string;
+  category: string;
+}
+
+export interface IndicatorReading {
+  symbol: string;
+  indicator: string;
+  as_of: string | null;
+  signal: "bullish" | "bearish" | "neutral";
+  summary: string;
+  explainer: string;
+  value: Record<string, number | null>;
+}
+
+export const fetchIndicatorList = () =>
+  apiFetch<IndicatorMeta[]>("/api/v1/indicators/list");
+
+export const fetchIndicator = (symbol: string, indicator: string) =>
+  apiFetch<IndicatorReading>(`/api/v1/securities/${symbol}/indicators/${indicator}`);
+
 export const fetchWatchlist = () => apiFetch<WatchlistItem[]>("/api/v1/watchlist");
 export const addToWatchlist = (symbol: string, note?: string) =>
   apiFetch<WatchlistItem>("/api/v1/watchlist", {

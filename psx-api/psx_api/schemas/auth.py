@@ -65,6 +65,12 @@ class TotpVerifyRequest(BaseModel):
     totp_code: str = Field(..., pattern=r"^\d{6}$")
 
 
+class UserSettingsUpdate(BaseModel):
+    shariah_mode: bool | None = None
+    is_filer: bool | None = None
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

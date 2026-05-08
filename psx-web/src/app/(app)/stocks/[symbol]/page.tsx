@@ -14,6 +14,9 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PriceChart } from "@/components/stocks/PriceChart";
 import { WatchlistButton } from "@/components/stocks/WatchlistButton";
+import { TradeEntryModal } from "@/components/portfolios/TradeEntryModal";
+import { IndicatorPanel } from "@/components/stocks/IndicatorPanel";
+import { Button } from "@/components/ui/button";
 import {
   formatDecimal,
   formatMarketCap,
@@ -124,7 +127,14 @@ export default function StockDetailPage() {
             ) : (
               <p className="text-sm text-gray-400">Price unavailable</p>
             )}
-            <WatchlistButton symbol={symbol} />
+            <div className="flex flex-wrap gap-2">
+              <WatchlistButton symbol={symbol} />
+              <TradeEntryModal
+                trigger={<Button variant="outline">+ Record trade</Button>}
+                defaultSymbol={symbol}
+                defaultPrice={latest?.close ?? undefined}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -199,8 +209,13 @@ export default function StockDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="indicators">Indicators</TabsTrigger>
           <TabsTrigger value="announcements">Announcements</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="indicators">
+          <IndicatorPanel symbol={symbol} />
+        </TabsContent>
 
         <TabsContent value="overview">
           <Card>

@@ -99,7 +99,11 @@ export default function WatchlistPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex h-48 items-center justify-center text-sm text-gray-500">Loading…</div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse rounded-md bg-gray-100" />
+          ))}
+        </div>
       ) : isError ? (
         <div className="flex h-48 items-center justify-center text-sm text-red-500">
           Failed to load watchlist.

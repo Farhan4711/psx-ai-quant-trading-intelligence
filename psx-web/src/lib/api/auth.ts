@@ -53,3 +53,26 @@ export async function apiVerifyEmail(token: string): Promise<{ message: string }
     body: JSON.stringify({ token }),
   });
 }
+
+export interface CurrentUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  email_verified: boolean;
+  is_filer: boolean;
+  shariah_mode: boolean;
+  totp_enabled: boolean;
+  created_at: string;
+}
+
+export const fetchCurrentUser = () => apiFetch<CurrentUser>("/api/v1/auth/me");
+
+export const updateCurrentUser = (body: {
+  shariah_mode?: boolean;
+  is_filer?: boolean;
+  full_name?: string;
+}) =>
+  apiFetch<CurrentUser>("/api/v1/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });

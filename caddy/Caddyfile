@@ -1,0 +1,47 @@
+# Caddy reverse proxy + automatic Let's Encrypt
+#
+# Replace `psxai.example` with the actual domain when you provision DNS.
+# Caddy resolves the upstream container hostnames (`web`, `api`) via the
+# Docker network — no IPs hardcoded.
+
+{
+    # Global options
+    email admin@psxai.example
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+# ── Marketing + app frontend ─────────────────────────────────────────────────
+psxai.example {
+    encode zstd gzip
+
+    # Long-cache static assets
+    @static path /_next/static/*
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Security headers (CSP intentionally permissive for inline Next runtime;
+    # tighten further in Phase 2 when nonces are wired up)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        # Caddy adds X-Frame-Options DENY by default via the app config too
+    }
+
+    reverse_proxy web:3000
+}
+
+# ── API ───────────────────────────────────────────────────────────────────────
+api.psxai.example {
+    encode zstd gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+    }
+
+    reverse_proxy api:8000
+}

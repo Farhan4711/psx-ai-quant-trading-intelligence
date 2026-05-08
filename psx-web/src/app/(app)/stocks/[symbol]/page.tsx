@@ -16,6 +16,7 @@ import { PriceChart } from "@/components/stocks/PriceChart";
 import { WatchlistButton } from "@/components/stocks/WatchlistButton";
 import { TradeEntryModal } from "@/components/portfolios/TradeEntryModal";
 import { IndicatorPanel } from "@/components/stocks/IndicatorPanel";
+import { SignalPanel } from "@/components/stocks/SignalPanel";
 import { Button } from "@/components/ui/button";
 import {
   formatDecimal,
@@ -209,9 +210,14 @@ export default function StockDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="signal">Signal</TabsTrigger>
           <TabsTrigger value="indicators">Indicators</TabsTrigger>
           <TabsTrigger value="announcements">Announcements</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="signal">
+          <SignalPanel symbol={symbol} />
+        </TabsContent>
 
         <TabsContent value="indicators">
           <IndicatorPanel symbol={symbol} />

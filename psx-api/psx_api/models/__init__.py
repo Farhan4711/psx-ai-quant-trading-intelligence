@@ -2,7 +2,9 @@ from psx_api.models.base import Base
 from psx_api.models.corporate_actions import CorporateAction
 from psx_api.models.ohlcv import OhlcvDaily
 from psx_api.models.goals import Goal
+from psx_api.models.macro import MacroIndicator
 from psx_api.models.portfolios import HoldingsSnapshot, Portfolio, Transaction, TransactionType
+from psx_api.models.predictions import ModelPrediction
 from psx_api.models.securities import Security
 from psx_api.models.tax_rules import TaxRule
 from psx_api.models.users import User, UserSession
@@ -22,4 +24,6 @@ __all__ = [
     "HoldingsSnapshot",
     "TaxRule",
     "Goal",
+    "MacroIndicator",
+    "ModelPrediction",
 ]

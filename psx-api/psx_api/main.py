@@ -77,7 +77,9 @@ def create_app() -> FastAPI:
         backtest,
         goals,
         health,
+        macro,
         portfolios,
+        predictions,
         risk,
         sectors,
         securities,
@@ -92,6 +94,8 @@ def create_app() -> FastAPI:
     app.include_router(risk.router)
     app.include_router(goals.router)
     app.include_router(backtest.router)
+    app.include_router(predictions.router)
+    app.include_router(macro.router)
 
     return app
 

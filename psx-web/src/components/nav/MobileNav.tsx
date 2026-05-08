@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BookOpen,
   Briefcase,
+  FlaskConical,
   Grid3x3,
   LayoutDashboard,
   Menu,
@@ -21,6 +22,7 @@ const ITEMS = [
   { href: "/app/watchlist", label: "Watchlist", icon: BookOpen },
   { href: "/app/portfolio", label: "Portfolio", icon: Briefcase },
   { href: "/app/goals", label: "Goals", icon: Target },
+  { href: "/app/backtest", label: "Backtest", icon: FlaskConical },
   { href: "/app/sectors", label: "Sectors", icon: Grid3x3 },
   { href: "/app/risk-profile", label: "Risk Profile", icon: UserCheck },
   { href: "/app/settings", label: "Settings", icon: Settings },

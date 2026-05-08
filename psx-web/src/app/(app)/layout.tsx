@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BarChart2, Bell, BookOpen, Briefcase, Calculator, FlaskConical, Grid3x3, LayoutDashboard, Search, Target } from "lucide-react";
 import { ShariahBadge } from "@/components/shariah/ShariahBadge";
 import { MobileNav } from "@/components/nav/MobileNav";
+import { NotificationsBell } from "@/components/nav/NotificationsBell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -105,6 +106,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           <div className="ml-auto flex items-center gap-3">
             <ShariahBadge />
+            <NotificationsBell />
             <Link
               href="/app/settings"
               className="hidden text-sm text-gray-500 hover:text-gray-700 sm:block"

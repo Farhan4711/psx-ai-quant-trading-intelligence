@@ -166,6 +166,17 @@ async def update_me(
         user.is_filer = body.is_filer
     if body.full_name is not None:
         user.full_name = body.full_name
+    if body.share_anonymously is not None:
+        user.share_anonymously = body.share_anonymously
+    if body.date_of_birth is not None:
+        from datetime import date as _date
+        try:
+            user.date_of_birth = _date.fromisoformat(body.date_of_birth)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="date_of_birth must be YYYY-MM-DD.",
+            )
     await db.flush()
     return UserResponse.from_user(user)
 

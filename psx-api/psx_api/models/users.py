@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import INET, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,6 +29,11 @@ class User(Base):
     time_horizon_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     knowledge_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     risk_profile_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Phase 4 (Step 59): opt-in to anonymous benchmarking + age bucketing
+    share_anonymously: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     # TOTP second factor
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")

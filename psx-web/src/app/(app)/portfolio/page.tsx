@@ -11,6 +11,7 @@ import { fetchCurrentUser } from "@/lib/api/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TradeEntryModal } from "@/components/portfolios/TradeEntryModal";
+import { BenchmarkPanel } from "@/components/portfolios/BenchmarkPanel";
 import { formatCurrency, formatPercent, formatPrice } from "@/lib/utils/format";
 import { AlertTriangle } from "lucide-react";
 
@@ -138,6 +139,9 @@ export default function PortfolioDashboardPage() {
               valueClass="text-gray-700"
             />
           </div>
+
+          {/* How I compare (Phase 4) */}
+          <BenchmarkPanel />
 
           {/* Sector allocation */}
           <SectorAllocation rows={summary.sector_allocation} />

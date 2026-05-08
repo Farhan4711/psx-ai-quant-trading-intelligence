@@ -1,5 +1,13 @@
 from psx_api.models.alerts import SuspiciousDay
 from psx_api.models.base import Base
+from psx_api.models.community import (
+    Lesson,
+    Notification,
+    PeerAggregate,
+    PurificationRecord,
+    UserLessonProgress,
+    UserStrategy,
+)
 from psx_api.models.corporate_actions import CorporateAction
 from psx_api.models.goals import Goal
 from psx_api.models.macro import MacroIndicator
@@ -33,4 +41,10 @@ __all__ = [
     "CompanyAlias",
     "ArticleSentiment",
     "SuspiciousDay",
+    "PeerAggregate",
+    "UserStrategy",
+    "Notification",
+    "PurificationRecord",
+    "Lesson",
+    "UserLessonProgress",
 ]

@@ -69,6 +69,9 @@ class UserSettingsUpdate(BaseModel):
     shariah_mode: bool | None = None
     is_filer: bool | None = None
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    # Phase 4 Step 59: opt-in to anonymized benchmarking + age bucketing
+    share_anonymously: bool | None = None
+    date_of_birth: str | None = None  # YYYY-MM-DD; service parses to date
 
 
 class UserResponse(BaseModel):

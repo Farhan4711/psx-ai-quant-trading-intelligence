@@ -76,6 +76,7 @@ def create_app() -> FastAPI:
         alerts,
         auth,
         backtest,
+        community,
         goals,
         health,
         macro,
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(news.router)
     app.include_router(alerts.router)
     app.include_router(tax_simulator.router)
+    app.include_router(community.router)
 
     return app
 

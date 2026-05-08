@@ -10,6 +10,8 @@ import {
   Menu,
   Search,
   Settings,
+  Target,
+  UserCheck,
   X,
 } from "lucide-react";
 
@@ -18,7 +20,9 @@ const ITEMS = [
   { href: "/app/stocks", label: "Stocks", icon: Search },
   { href: "/app/watchlist", label: "Watchlist", icon: BookOpen },
   { href: "/app/portfolio", label: "Portfolio", icon: Briefcase },
+  { href: "/app/goals", label: "Goals", icon: Target },
   { href: "/app/sectors", label: "Sectors", icon: Grid3x3 },
+  { href: "/app/risk-profile", label: "Risk Profile", icon: UserCheck },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 

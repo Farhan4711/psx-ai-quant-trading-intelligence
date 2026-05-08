@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { BarChart2, BookOpen, Briefcase, Grid3x3, LayoutDashboard, Search } from "lucide-react";
+import { BarChart2, BookOpen, Briefcase, Grid3x3, LayoutDashboard, Search, Target } from "lucide-react";
 import { ShariahBadge } from "@/components/shariah/ShariahBadge";
 import { MobileNav } from "@/components/nav/MobileNav";
 
@@ -54,6 +54,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <span className="flex items-center gap-1.5">
                 <Briefcase className="h-4 w-4" />
                 Portfolio
+              </span>
+            </Link>
+            <Link
+              href="/app/goals"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span className="flex items-center gap-1.5">
+                <Target className="h-4 w-4" />
+                Goals
               </span>
             </Link>
             <Link

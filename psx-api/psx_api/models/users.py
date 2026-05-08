@@ -23,6 +23,12 @@ class User(Base):
     cnic_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
     is_filer: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     shariah_mode: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Risk profile (Phase 2 Step 34)
+    risk_archetype: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    risk_tolerance_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    time_horizon_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    knowledge_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    risk_profile_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # TOTP second factor
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")

@@ -1,5 +1,6 @@
 from psx_api.models.alerts import SuspiciousDay
 from psx_api.models.base import Base
+from psx_api.models.billing import SubscriptionPlan, UserSubscription
 from psx_api.models.community import (
     Lesson,
     Notification,
@@ -47,4 +48,6 @@ __all__ = [
     "PurificationRecord",
     "Lesson",
     "UserLessonProgress",
+    "SubscriptionPlan",
+    "UserSubscription",
 ]

@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
         alerts,
         auth,
         backtest,
+        billing,
         community,
         goals,
         health,
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(alerts.router)
     app.include_router(tax_simulator.router)
     app.include_router(community.router)
+    app.include_router(billing.router)
 
     return app
 

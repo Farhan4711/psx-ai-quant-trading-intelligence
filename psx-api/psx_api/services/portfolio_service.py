@@ -63,13 +63,18 @@ class PortfolioService:
         return portfolio
 
     async def create(self, user_id: str, body: PortfolioCreate) -> Portfolio:
-        # If this portfolio is being set as default, unset any existing default first
+        # If this portfolio is being set as default, unset any existing
+        # default FIRST. Explicit flush() ensures the bulk UPDATE hits the
+        # database before the new row's INSERT — otherwise the partial
+        # unique index `uq_portfolios_user_default` could see two TRUE
+        # rows in the flush batch and fail the IntegrityError check.
         if body.is_default:
             await self._db.execute(
                 update(Portfolio)
                 .where(Portfolio.user_id == user_id, Portfolio.is_default.is_(True))
                 .values(is_default=False)
             )
+            await self._db.flush()
 
         portfolio = Portfolio(
             user_id=user_id,
@@ -101,6 +106,7 @@ class PortfolioService:
                 .where(Portfolio.user_id == user_id, Portfolio.is_default.is_(True))
                 .values(is_default=False)
             )
+            await self._db.flush()  # see create() — same unique-index ordering issue
 
         if body.name is not None:
             portfolio.name = body.name

@@ -156,6 +156,7 @@ function Row({
           type="checkbox"
           checked={line.marked_donated}
           onChange={(e) => onToggle(e.target.checked)}
+          aria-label={`Mark ${line.symbol} purification as donated`}
           className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
         />
       </td>

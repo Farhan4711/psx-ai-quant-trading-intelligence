@@ -10,6 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from psx_api.models.community import Notification
 
 
+# Mirrors the DB CHECK constraint added in migration 0012. Keeping this
+# list as the single source of truth in the application means callers
+# get a fast, descriptive error instead of an IntegrityError on flush.
+VALID_KINDS = frozenset(
+    {"kmi_delisting", "pump_dump", "goal_milestone", "system"}
+)
+
+
 class NotificationService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
@@ -23,6 +31,11 @@ class NotificationService:
         body: str,
         link_path: str | None = None,
     ) -> Notification:
+        if kind not in VALID_KINDS:
+            raise ValueError(
+                f"Unknown notification kind {kind!r}. "
+                f"Must be one of: {sorted(VALID_KINDS)}"
+            )
         n = Notification(
             user_id=user_id, kind=kind, title=title, body=body, link_path=link_path
         )

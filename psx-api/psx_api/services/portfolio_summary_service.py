@@ -159,49 +159,66 @@ class PortfolioSummaryService:
         For each holding, simulate selling all open lots at the latest close.
         Sum the CGT — that's what the user would owe at liquidation today.
         After-tax unrealized = gross unrealized − CGT-if-sold.
+
+        Performance note: this used to be O(holdings × 2) DB roundtrips. The
+        20-holding portfolio incurred 40+ DB roundtrips per dashboard load
+        on this method alone. We now batch-load every transaction for the
+        portfolio in one query and partition in Python — O(1) DB roundtrip
+        regardless of holding count.
         """
         if not holdings:
             return {"cgt_if_sold_pkr": Decimal("0"), "after_tax_pkr": Decimal("0")}
 
+        eligible = [
+            h for h in holdings
+            if h["last_close"] is not None and h["quantity"] > 0
+        ]
+        if not eligible:
+            return {"cgt_if_sold_pkr": Decimal("0"), "after_tax_pkr": Decimal("0")}
+
+        symbols = [h["symbol"] for h in eligible]
+        gross_unrealized = sum(
+            (h["unrealized_pnl_pkr"] or Decimal("0") for h in eligible),
+            Decimal("0"),
+        )
+
         brackets = await self._tax_repo.load_cgt_brackets()
         today = date.today()
+
+        # Single batch load of every relevant transaction for this portfolio
+        # and the held symbols. Chronological order matters for FIFO walk.
+        txn_rows = (
+            await self._db.execute(
+                select(Transaction)
+                .where(
+                    Transaction.portfolio_id == portfolio.id,
+                    Transaction.symbol.in_(symbols),
+                    Transaction.transaction_type.in_(("buy", "bonus", "rights", "sell")),
+                )
+                .order_by(Transaction.transaction_date, Transaction.created_at)
+            )
+        ).scalars().all()
+
+        # Partition into (buys-by-symbol, total-sells-by-symbol)
+        buys_by_symbol: dict[str, list[Transaction]] = {s: [] for s in symbols}
+        sells_qty_by_symbol: dict[str, Decimal] = {s: Decimal("0") for s in symbols}
+        for t in txn_rows:
+            if t.transaction_type == "sell":
+                sells_qty_by_symbol[t.symbol] = (
+                    sells_qty_by_symbol.get(t.symbol, Decimal("0")) + t.quantity
+                )
+            else:  # buy / bonus / rights
+                buys_by_symbol.setdefault(t.symbol, []).append(t)
+
         total_cgt = Decimal("0")
-        gross_unrealized = Decimal("0")
 
-        for h in holdings:
-            if h["last_close"] is None or h["quantity"] <= 0:
+        for h in eligible:
+            buys = buys_by_symbol.get(h["symbol"], [])
+            if not buys:
                 continue
-            gross_unrealized += h["unrealized_pnl_pkr"] or Decimal("0")
 
-            # Get open lots for this symbol
-            buys = (
-                (
-                    await self._db.execute(
-                        select(Transaction)
-                        .where(
-                            Transaction.portfolio_id == portfolio.id,
-                            Transaction.symbol == h["symbol"],
-                            Transaction.transaction_type.in_(("buy", "bonus", "rights")),
-                        )
-                        .order_by(Transaction.transaction_date, Transaction.created_at)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            sells = (
-                (
-                    await self._db.execute(
-                        select(func.coalesce(func.sum(Transaction.quantity), 0)).where(
-                            Transaction.portfolio_id == portfolio.id,
-                            Transaction.symbol == h["symbol"],
-                            Transaction.transaction_type == "sell",
-                        )
-                    )
-                )
-                .scalar_one()
-            )
-            sell_remaining = Decimal(str(sells))
+            # Reduce buy quantities by prior sells (FIFO consumption)
+            sell_remaining = sells_qty_by_symbol.get(h["symbol"], Decimal("0"))
             open_qty: dict[str, Decimal] = {b.id: b.quantity for b in buys}
             for b in buys:
                 if sell_remaining <= 0:

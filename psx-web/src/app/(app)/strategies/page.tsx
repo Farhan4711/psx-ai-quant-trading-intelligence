@@ -122,10 +122,11 @@ function MyList() {
             </pre>
           </div>
           <button
+            type="button"
             onClick={() => remove.mutate(s.id)}
             disabled={remove.isPending}
             className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
-            aria-label="Delete"
+            aria-label={`Delete strategy: ${s.name}`}
           >
             <Trash2 className="h-4 w-4" />
           </button>

@@ -197,6 +197,113 @@ class AuthService:
             await self._db.flush()
 
     # ------------------------------------------------------------------
+    # Session management (settings → security tab)
+    # ------------------------------------------------------------------
+
+    async def list_sessions(
+        self, user: User, current_raw_token: str | None
+    ) -> list[dict[str, Any]]:
+        """All non-expired sessions for this user, newest first. The
+        session matching `current_raw_token` is flagged `is_current` so
+        the UI can render "this device" indicator + prevent the user
+        from accidentally revoking it."""
+        now = datetime.now(tz=timezone.utc)
+        result = await self._db.execute(
+            select(UserSession)
+            .where(
+                UserSession.user_id == user.id,
+                UserSession.expires_at > now,
+            )
+            .order_by(UserSession.created_at.desc())
+        )
+        rows = result.scalars().all()
+        current_hash = _sha256(current_raw_token) if current_raw_token else None
+        return [
+            {
+                "id": s.id,
+                "user_agent": s.user_agent,
+                "ip_address": str(s.ip_address) if s.ip_address else None,
+                "created_at": s.created_at,
+                "expires_at": s.expires_at,
+                "is_current": s.token_hash == current_hash,
+            }
+            for s in rows
+        ]
+
+    async def revoke_session(
+        self, user: User, session_id: str, current_raw_token: str | None
+    ) -> tuple[bool, bool]:
+        """Delete a single session. Returns `(revoked, was_current)` where
+        `revoked=False` means the session didn't exist (or belonged to
+        another user, deliberately conflated to avoid leaking existence).
+        `was_current=True` tells the router to also clear the cookie."""
+        result = await self._db.execute(
+            select(UserSession).where(UserSession.id == session_id)
+        )
+        session = result.scalar_one_or_none()
+        if not session or session.user_id != user.id:
+            return False, False
+        current_hash = _sha256(current_raw_token) if current_raw_token else None
+        was_current = session.token_hash == current_hash
+        await self._db.delete(session)
+        await self._db.flush()
+        return True, was_current
+
+    async def revoke_other_sessions(
+        self, user: User, current_raw_token: str | None
+    ) -> int:
+        """Delete every session for this user EXCEPT the one matching
+        the caller's cookie. Returns the count of deleted sessions.
+        Used by the "Sign out everywhere else" button."""
+        current_hash = _sha256(current_raw_token) if current_raw_token else None
+        result = await self._db.execute(
+            select(UserSession).where(UserSession.user_id == user.id)
+        )
+        rows = result.scalars().all()
+        deleted = 0
+        for s in rows:
+            if s.token_hash == current_hash:
+                continue
+            await self._db.delete(s)
+            deleted += 1
+        if deleted:
+            await self._db.flush()
+        return deleted
+
+    # ------------------------------------------------------------------
+    # Resend verification email
+    # ------------------------------------------------------------------
+
+    async def resend_verification_email(self, user: User) -> None:
+        """Issue a fresh verification token and re-email it. Rate-limit
+        via Redis: one send per 5 minutes per user-id, so a malicious
+        actor can't use a known email + leaked cookie to spam the
+        inbox.
+
+        Raises AuthError with status_code=429 when rate-limited so the
+        router can surface a clean "wait a bit" response."""
+        if user.email_verified_at is not None:
+            raise AuthError("This email is already verified.", status_code=400)
+
+        cooldown_key = f"email_verify_cooldown:{user.id}"
+        # SETNX with 5-minute TTL — succeeds the first time, fails
+        # while the key is still set.
+        acquired = await self._redis.set(
+            cooldown_key, "1", ex=300, nx=True
+        )
+        if not acquired:
+            raise AuthError(
+                "We just sent a verification email. Wait 5 minutes before requesting another.",
+                status_code=429,
+            )
+
+        token = secrets.token_urlsafe(32)
+        token_hash = _sha256(token)
+        await self._redis.setex(f"email_verify:{token_hash}", _VERIFY_TTL, user.id)
+        await send_verification_email(user.email, token)
+        logger.info("Verification email resent", user_id=user.id)
+
+    # ------------------------------------------------------------------
     # Password reset
     # ------------------------------------------------------------------
 

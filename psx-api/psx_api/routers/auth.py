@@ -229,3 +229,83 @@ async def totp_disable(
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
     return {"message": "Two-factor authentication disabled."}
+
+
+# ------------------------------------------------------------------
+# Session management — Settings → Security tab
+# ------------------------------------------------------------------
+
+
+@router.get("/sessions")
+async def list_sessions(
+    current_user: CurrentUser,
+    service: ServiceDep,
+    psx_session: Annotated[str | None, Cookie()] = None,
+) -> list[dict[str, object]]:
+    """All active sessions for the logged-in user. The session matching
+    the caller's cookie is flagged `is_current=true`."""
+    from psx_api.models.users import User
+    user: User = current_user  # type: ignore[assignment]
+    return await service.list_sessions(user, psx_session)
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_session(
+    session_id: str,
+    current_user: CurrentUser,
+    service: ServiceDep,
+    response: Response,
+    psx_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    """Revoke a single session. If the caller revokes their own
+    current session this also clears the cookie (effectively logout)."""
+    from psx_api.models.users import User
+    user: User = current_user  # type: ignore[assignment]
+    revoked, was_current = await service.revoke_session(
+        user, session_id, psx_session
+    )
+    if not revoked:
+        # 404 instead of 403 to avoid leaking session-ID existence to a
+        # caller who doesn't own that session.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found."
+        )
+    if was_current:
+        # They killed their own current session — clear the cookie so
+        # the next request 401s cleanly instead of dangling.
+        _clear_session_cookie(response)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/sessions/revoke-others")
+async def revoke_other_sessions(
+    current_user: CurrentUser,
+    service: ServiceDep,
+    psx_session: Annotated[str | None, Cookie()] = None,
+) -> dict[str, int]:
+    """Sign out every session except the caller's current one."""
+    from psx_api.models.users import User
+    user: User = current_user  # type: ignore[assignment]
+    count = await service.revoke_other_sessions(user, psx_session)
+    return {"revoked": count}
+
+
+# ------------------------------------------------------------------
+# Resend verification email
+# ------------------------------------------------------------------
+
+
+@router.post("/resend-verification")
+async def resend_verification(
+    current_user: CurrentUser,
+    service: ServiceDep,
+) -> dict[str, str]:
+    """Issue a fresh verification email. Authed (we need the user-id
+    for rate-limiting), 1 send per 5 min per user."""
+    from psx_api.models.users import User
+    user: User = current_user  # type: ignore[assignment]
+    try:
+        await service.resend_verification_email(user)
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+    return {"message": "Verification email sent. Check your inbox."}

@@ -1,13 +1,14 @@
 import {
   createApiClient,
   type CurrentUser,
+  type SessionInfo,
   type UserSettingsUpdate,
 } from "@psx/shared";
 
 // Re-export so existing callers (`import { CurrentUser } from "@/lib/api/auth"`)
 // keep working during the migration. New code should import from
 // `@psx/shared` directly.
-export type { CurrentUser, UserSettingsUpdate };
+export type { CurrentUser, SessionInfo, UserSettingsUpdate };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const api = createApiClient({ baseUrl: API_URL });
@@ -46,3 +47,17 @@ export const fetchCurrentUser = () => api.get<CurrentUser>("/api/v1/auth/me");
 
 export const updateCurrentUser = (body: UserSettingsUpdate) =>
   api.patch<CurrentUser>("/api/v1/auth/me", body);
+
+// ── Settings → Security tab ───────────────────────────────────
+
+export const fetchActiveSessions = () =>
+  api.get<SessionInfo[]>("/api/v1/auth/sessions");
+
+export const revokeSession = (sessionId: string) =>
+  api.delete<void>(`/api/v1/auth/sessions/${sessionId}`);
+
+export const revokeOtherSessions = () =>
+  api.post<{ revoked: number }>("/api/v1/auth/sessions/revoke-others");
+
+export const resendVerificationEmail = () =>
+  api.post<{ message: string }>("/api/v1/auth/resend-verification");

@@ -57,6 +57,16 @@ export interface UserSettingsUpdate {
   share_anonymously?: boolean;
 }
 
+/** One active session row in the Settings → Security tab. */
+export interface SessionInfo {
+  id: UUID;
+  user_agent: string | null;
+  ip_address: string | null;
+  created_at: ISODateTime;
+  expires_at: ISODateTime;
+  is_current: boolean;
+}
+
 // ── Securities ──────────────────────────────────────────────────
 
 export interface Security {

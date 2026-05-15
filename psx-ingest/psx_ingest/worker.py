@@ -29,6 +29,8 @@ celery_app = Celery(
         "psx_ingest.tasks.backfill",
         "psx_ingest.tasks.corporate_actions",
         "psx_ingest.tasks.adjust_prices",
+        "psx_ingest.tasks.news",
+        "psx_ingest.tasks.macro",
     ],
 )
 
@@ -66,5 +68,57 @@ celery_app.conf.beat_schedule = {
     "recompute-adjusted-prices": {
         "task": "psx_ingest.tasks.adjust_prices.recompute_adjusted_prices",
         "schedule": crontab(hour=18, minute=0),
+    },
+    # ── News scrapers ────────────────────────────────────────────
+    # Active hours (09:30-15:30 PKT, Mon-Fri): every 30 minutes.
+    # Off-hours: every 6 hours so we still pick up evening/weekend news.
+    # Both windows fire from the same task names — Redis URL dedupe and
+    # the news_articles.url UNIQUE constraint mean re-runs are no-ops.
+    "scrape-dawn-market-hours": {
+        "task": "psx_ingest.tasks.news.scrape_dawn",
+        "schedule": crontab(minute="0,30", hour="9-15", day_of_week="mon-fri"),
+    },
+    "scrape-dawn-offhours": {
+        "task": "psx_ingest.tasks.news.scrape_dawn",
+        "schedule": crontab(minute=15, hour="0,6,18,22"),
+    },
+    "scrape-brecorder-market-hours": {
+        "task": "psx_ingest.tasks.news.scrape_brecorder",
+        "schedule": crontab(minute="5,35", hour="9-15", day_of_week="mon-fri"),
+    },
+    "scrape-brecorder-offhours": {
+        "task": "psx_ingest.tasks.news.scrape_brecorder",
+        "schedule": crontab(minute=20, hour="0,6,18,22"),
+    },
+    "scrape-profit-market-hours": {
+        "task": "psx_ingest.tasks.news.scrape_profit",
+        "schedule": crontab(minute="10,40", hour="9-15", day_of_week="mon-fri"),
+    },
+    "scrape-profit-offhours": {
+        "task": "psx_ingest.tasks.news.scrape_profit",
+        "schedule": crontab(minute=25, hour="0,6,18,22"),
+    },
+    "scrape-thenews-market-hours": {
+        "task": "psx_ingest.tasks.news.scrape_thenews",
+        "schedule": crontab(minute="15,45", hour="9-15", day_of_week="mon-fri"),
+    },
+    "scrape-thenews-offhours": {
+        "task": "psx_ingest.tasks.news.scrape_thenews",
+        "schedule": crontab(minute=30, hour="0,6,18,22"),
+    },
+    "scrape-tribune-market-hours": {
+        "task": "psx_ingest.tasks.news.scrape_tribune",
+        "schedule": crontab(minute="20,50", hour="9-15", day_of_week="mon-fri"),
+    },
+    "scrape-tribune-offhours": {
+        "task": "psx_ingest.tasks.news.scrape_tribune",
+        "schedule": crontab(minute=35, hour="0,6,18,22"),
+    },
+    # ── Macro indicators ─────────────────────────────────────────
+    # SBP / KIBOR / FX update once a day at 17:00 PKT — these are
+    # published as daily snapshots, no need to poll more often.
+    "ingest-macro-daily": {
+        "task": "psx_ingest.tasks.macro.ingest_macro_daily",
+        "schedule": crontab(hour=17, minute=0),
     },
 }

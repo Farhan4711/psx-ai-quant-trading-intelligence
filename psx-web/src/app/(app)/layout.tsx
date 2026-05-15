@@ -15,14 +15,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-40 border-b border-gray-200 bg-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
           <MobileNav />
-          <Link href="/app" className="flex items-center gap-2 text-lg font-bold text-blue-700">
+          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-bold text-blue-700">
             <BarChart2 className="h-5 w-5" />
             PSX AI
           </Link>
 
           <nav className="hidden items-center gap-1 sm:flex">
             <Link
-              href="/app"
+              href="/dashboard"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/stocks"
+              href="/stocks"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/watchlist"
+              href="/watchlist"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -49,7 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/portfolio"
+              href="/portfolio"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -58,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/goals"
+              href="/goals"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -67,7 +67,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/backtest"
+              href="/backtest"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -76,7 +76,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/sectors"
+              href="/sectors"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -85,7 +85,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/alerts"
+              href="/alerts"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -94,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </Link>
             <Link
-              href="/app/tax-simulator"
+              href="/tax-simulator"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               <span className="flex items-center gap-1.5">
@@ -108,7 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <ShariahBadge />
             <NotificationsBell />
             <Link
-              href="/app/settings"
+              href="/settings"
               className="hidden text-sm text-gray-500 hover:text-gray-700 sm:block"
             >
               {session.user?.name ?? session.user?.email}

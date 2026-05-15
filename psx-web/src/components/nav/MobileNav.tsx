@@ -22,20 +22,20 @@ import {
 } from "lucide-react";
 
 const ITEMS = [
-  { href: "/app", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/app/stocks", label: "Stocks", icon: Search },
-  { href: "/app/watchlist", label: "Watchlist", icon: BookOpen },
-  { href: "/app/portfolio", label: "Portfolio", icon: Briefcase },
-  { href: "/app/goals", label: "Goals", icon: Target },
-  { href: "/app/backtest", label: "Backtest", icon: FlaskConical },
-  { href: "/app/strategies", label: "Strategies", icon: Sparkles },
-  { href: "/app/sectors", label: "Sectors", icon: Grid3x3 },
-  { href: "/app/alerts", label: "Alerts", icon: Bell },
-  { href: "/app/tax-simulator", label: "Tax simulator", icon: Calculator },
-  { href: "/app/purification", label: "Purification", icon: Moon },
-  { href: "/app/lessons", label: "Lessons", icon: GraduationCap },
-  { href: "/app/risk-profile", label: "Risk Profile", icon: UserCheck },
-  { href: "/app/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/stocks", label: "Stocks", icon: Search },
+  { href: "/watchlist", label: "Watchlist", icon: BookOpen },
+  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+  { href: "/goals", label: "Goals", icon: Target },
+  { href: "/backtest", label: "Backtest", icon: FlaskConical },
+  { href: "/strategies", label: "Strategies", icon: Sparkles },
+  { href: "/sectors", label: "Sectors", icon: Grid3x3 },
+  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/tax-simulator", label: "Tax simulator", icon: Calculator },
+  { href: "/purification", label: "Purification", icon: Moon },
+  { href: "/lessons", label: "Lessons", icon: GraduationCap },
+  { href: "/risk-profile", label: "Risk Profile", icon: UserCheck },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 /**

@@ -21,7 +21,7 @@ export function ShariahBadge() {
 
   return (
     <Link
-      href="/app/settings"
+      href="/settings"
       className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
       title="Shariah Mode is on — non-compliant stocks are filtered or warned"
     >

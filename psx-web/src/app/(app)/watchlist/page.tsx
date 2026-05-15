@@ -111,7 +111,7 @@ export default function WatchlistPage() {
       ) : order.length === 0 ? (
         <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-white text-center">
           <p className="text-sm text-gray-500">Your watchlist is empty.</p>
-          <Link href="/app/stocks" className="text-sm text-blue-600 hover:underline">
+          <Link href="/stocks" className="text-sm text-blue-600 hover:underline">
             Browse stocks →
           </Link>
         </div>

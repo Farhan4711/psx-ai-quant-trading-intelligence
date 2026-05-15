@@ -80,7 +80,7 @@ export default function GoalsPage() {
       {!profile && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           ⚠ You haven&apos;t taken the{" "}
-          <Link href="/app/risk-profile" className="font-semibold underline">
+          <Link href="/risk-profile" className="font-semibold underline">
             risk profile
           </Link>{" "}
           yet. Allocations will fall back to a balanced default until you do.

@@ -41,7 +41,7 @@ export default function LessonPage() {
   return (
     <div className="space-y-6">
       <Link
-        href="/app/lessons"
+        href="/lessons"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -137,7 +137,7 @@ export default function LessonPage() {
                   Retry
                 </Button>
               )}
-              <Link href="/app/lessons">
+              <Link href="/lessons">
                 <Button>{result.completed ? "Next lesson →" : "Back to skill tree"}</Button>
               </Link>
             </div>

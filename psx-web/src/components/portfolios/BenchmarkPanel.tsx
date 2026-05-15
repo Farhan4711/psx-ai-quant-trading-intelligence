@@ -32,7 +32,7 @@ export function BenchmarkPanel() {
             "Benchmark not available yet — opt in to anonymized data sharing in Settings."}
         </p>
         <Link
-          href="/app/settings"
+          href="/settings"
           className="mt-2 inline-block text-xs text-blue-600 hover:underline"
         >
           Manage in Settings →

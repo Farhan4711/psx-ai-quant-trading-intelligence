@@ -70,7 +70,7 @@ export default function StockDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
         <p className="text-sm text-red-500">Symbol &ldquo;{symbol}&rdquo; not found.</p>
-        <Link href="/app/stocks" className="text-sm text-blue-600 hover:underline">
+        <Link href="/stocks" className="text-sm text-blue-600 hover:underline">
           ← Back to Stocks
         </Link>
       </div>
@@ -90,7 +90,7 @@ export default function StockDetailPage() {
     <div className="space-y-5">
       {/* Back link */}
       <Link
-        href="/app/stocks"
+        href="/stocks"
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
       >
         <ArrowLeft className="h-4 w-4" />

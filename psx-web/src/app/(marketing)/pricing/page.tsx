@@ -62,22 +62,20 @@ export default function PricingPage() {
         </div>
       )}
 
-      <div className="mt-16 rounded-lg border border-blue-200 bg-blue-50 p-6 text-sm text-blue-900">
-        <h2 className="font-semibold">Why is paid integration not live yet?</h2>
+      <div className="mt-16 rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-900">
+        <h2 className="font-semibold">Pay with what you already use</h2>
         <p className="mt-2">
-          We&apos;re building in public. Paid features (predictions on all
-          stocks, sentiment, alerts, custom backtests, macro overlays) are
-          fully built and working — but card processing for Pakistani retail
-          isn&apos;t straightforward (Stripe doesn&apos;t serve Pakistan
-          natively yet, and JazzCash/Easypaisa integration takes 4-6 weeks).
-          Early adopters get Pro free for 6 months when payment launches.
+          We support JazzCash, Easypaisa, Meezan Bank IPG, 1LINK PayFast
+          (Allied / HBL / UBL / Alfalah / MCB and other 1LINK-enabled banks),
+          SafePay (Visa / Mastercard), NayaPay wallet, and manual bank
+          transfer to a Meezan account if you prefer the traditional route.
+          Card and wallet data go directly to the gateway — we never see
+          or store it.
         </p>
-        <Link
-          href="mailto:hello@psxai.example"
-          className="mt-3 inline-block text-blue-700 underline"
-        >
-          Email us to get early access →
-        </Link>
+        <p className="mt-3 text-xs text-emerald-800">
+          Shariah-conscious investors: Meezan IPG settles through Meezan
+          Bank&apos;s Islamic banking treasury.
+        </p>
       </div>
     </div>
   );
@@ -130,7 +128,7 @@ function PlanCard({ plan, highlighted }: { plan: Plan; highlighted: boolean }) {
       </div>
 
       <Link
-        href={isFree ? "/signup" : `/signup?plan=${plan.slug}`}
+        href={isFree ? "/signup" : `/checkout?plan=${plan.slug}`}
         className={
           "mt-5 block rounded-md px-4 py-2 text-center text-sm font-semibold " +
           (highlighted
@@ -138,7 +136,7 @@ function PlanCard({ plan, highlighted }: { plan: Plan; highlighted: boolean }) {
             : "border border-gray-300 bg-white text-gray-800 hover:bg-gray-50")
         }
       >
-        {isFree ? "Start free" : "Get on the list"}
+        {isFree ? "Start free" : `Subscribe — PKR ${monthly.toLocaleString("en-PK")}/mo`}
       </Link>
 
       <ul className="mt-6 space-y-2 text-sm text-gray-700">

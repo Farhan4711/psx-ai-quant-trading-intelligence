@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 const tiles = [
   {
-    href: "/app/stocks",
+    href: "/stocks",
     icon: BarChart2,
     iconClass: "text-blue-600",
     arrowClass: "group-hover:text-blue-600",
@@ -20,7 +20,7 @@ const tiles = [
     blurb: "Browse all PSX-listed securities with filters and quotes.",
   },
   {
-    href: "/app/watchlist",
+    href: "/watchlist",
     icon: BookOpen,
     iconClass: "text-emerald-600",
     arrowClass: "group-hover:text-emerald-600",
@@ -28,7 +28,7 @@ const tiles = [
     blurb: "Drag-to-reorder, live quotes, mobile-friendly cards.",
   },
   {
-    href: "/app/portfolio",
+    href: "/portfolio",
     icon: Briefcase,
     iconClass: "text-violet-600",
     arrowClass: "group-hover:text-violet-600",
@@ -36,7 +36,7 @@ const tiles = [
     blurb: "After-tax P&L. Knows what you'd actually net if you sold today.",
   },
   {
-    href: "/app/sectors",
+    href: "/sectors",
     icon: Grid3x3,
     iconClass: "text-amber-600",
     arrowClass: "group-hover:text-amber-600",

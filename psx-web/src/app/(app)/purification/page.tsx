@@ -184,7 +184,7 @@ function NotShariahMode() {
     <div className="space-y-3">
       <h1 className="text-2xl font-bold text-gray-900">Dividend purification</h1>
       <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        Enable Shariah Mode in <a className="underline" href="/app/settings">Settings</a>{" "}
+        Enable Shariah Mode in <a className="underline" href="/settings">Settings</a>{" "}
         to use the purification calculator.
       </div>
     </div>

@@ -1,0 +1,3 @@
+packages:
+  - "psx-web"
+  - "psx-shared/typescript"

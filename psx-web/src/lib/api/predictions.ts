@@ -1,18 +1,12 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { createApiClient } from "@psx/shared";
 
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({ detail: res.statusText }))) as {
-      detail?: string;
-    };
-    throw new Error(err.detail ?? "Request failed");
-  }
-  return res.json() as Promise<T>;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const api = createApiClient({ baseUrl: API_URL });
+
+// Local extension: psx-shared exposes a narrow curated `PredictionResponse`,
+// but this UI also reads sub-model probabilities + horizon for the
+// "How does this work?" explainer. Once those become part of the public
+// contract (Step 105 swap to real models), we'll fold them into shared.
 
 export interface KeyFeature {
   name: string;
@@ -36,6 +30,6 @@ export interface Prediction {
 }
 
 export const fetchPrediction = (symbol: string, horizon = 1) =>
-  apiFetch<Prediction>(
+  api.get<Prediction>(
     `/api/v1/securities/${symbol}/prediction?horizon_days=${horizon}`,
   );

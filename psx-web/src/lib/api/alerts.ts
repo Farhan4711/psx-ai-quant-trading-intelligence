@@ -1,21 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { createApiClient } from "@psx/shared";
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...init?.headers },
-    ...init,
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({ detail: res.statusText }))) as {
-      detail?: string;
-    };
-    throw new Error(err.detail ?? "Request failed");
-  }
-  return res.json() as Promise<T>;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const api = createApiClient({ baseUrl: API_URL });
 
 // ── Alerts ─────────────────────────────────────────────────────────────
+// `SuspiciousDay` here is the UI-side extended view; the curated
+// `@psx/shared` version is the narrow shape stable enough to be public.
 
 export interface SuspiciousDay {
   id: string;
@@ -37,10 +27,10 @@ export interface SuspiciousState {
 }
 
 export const fetchAlertsForUser = (limit = 50) =>
-  apiFetch<SuspiciousDay[]>(`/api/v1/alerts?limit=${limit}`);
+  api.get<SuspiciousDay[]>(`/api/v1/alerts?limit=${limit}`);
 
 export const fetchSuspiciousState = (symbol: string) =>
-  apiFetch<SuspiciousState>(`/api/v1/securities/${symbol}/suspicious-state`);
+  api.get<SuspiciousState>(`/api/v1/securities/${symbol}/suspicious-state`);
 
 // ── News pulse ─────────────────────────────────────────────────────────
 
@@ -65,7 +55,7 @@ export interface NewsPulse {
 }
 
 export const fetchNewsPulse = (symbol: string) =>
-  apiFetch<NewsPulse>(`/api/v1/securities/${symbol}/news/pulse`);
+  api.get<NewsPulse>(`/api/v1/securities/${symbol}/news/pulse`);
 
 // ── Tax simulator ─────────────────────────────────────────────────────
 
@@ -89,5 +79,5 @@ export const fetchTaxSimulation = (dateFrom?: string, dateTo?: string) => {
   if (dateFrom) qs.set("date_from", dateFrom);
   if (dateTo) qs.set("date_to", dateTo);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  return apiFetch<TaxSimulatorResult>(`/api/v1/tax-simulator${suffix}`);
+  return api.get<TaxSimulatorResult>(`/api/v1/tax-simulator${suffix}`);
 };

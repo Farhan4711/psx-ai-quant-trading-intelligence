@@ -1,108 +1,62 @@
 /**
  * Billing + Pakistani payment-gateway client.
  *
- * The flow:
- *   1. /pricing  → public, lists plans + payment methods (no auth needed)
- *   2. /checkout?plan=pro&cycle=monthly  → authed, user picks a gateway
- *   3. POST /api/v1/billing/checkout returns the gateway URL + signed
- *      request_payload to hidden-form-POST (for redirect gateways) or
- *      a URL to window.location to (for API gateways) or text
- *      instructions to render inline (for `manual`).
- *   4. After gateway round-trip the user lands on /checkout/return
- *      which polls /api/v1/billing/intent/:id until activation.
+ * All types come from `@psx/shared` so the contract with the FastAPI
+ * backend is enforced at the type level. Hidden-form POST helper is
+ * here because it's a browser-only DOM API and `@psx/shared` is
+ * environment-agnostic.
  */
 
+import {
+  createApiClient,
+  type BillingCycle,
+  type CheckoutRequest,
+  type CheckoutResponse,
+  type CurrentSubscription,
+  type PaymentIntentStatus,
+  type PaymentMethodOption,
+  type PaymentProvider,
+  type SubscriptionPlan,
+} from "@psx/shared";
+
+// Re-export for legacy callers; new code should use `@psx/shared` directly.
+export type {
+  BillingCycle,
+  CheckoutRequest,
+  CheckoutResponse,
+  CurrentSubscription,
+  PaymentIntentStatus,
+  PaymentMethodOption,
+  PaymentProvider,
+  SubscriptionPlan,
+};
+// Aliases kept for source-compat with existing imports in pages built
+// before psx-shared was wired.
+export type PlanRow = SubscriptionPlan;
+export type PaymentMethod = PaymentMethodOption;
+export type IntentStatus = PaymentIntentStatus;
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const api = createApiClient({ baseUrl: API_URL });
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({ detail: res.statusText }))) as {
-      detail?: string;
-    };
-    throw new Error(err.detail ?? "Request failed");
-  }
-  return res.json() as Promise<T>;
+export async function fetchPlans(): Promise<SubscriptionPlan[]> {
+  return api.get("/api/v1/billing/plans");
 }
 
-export type PaymentProvider =
-  | "jazzcash"
-  | "easypaisa"
-  | "meezan"
-  | "allied_payfast"
-  | "safepay"
-  | "nayapay"
-  | "manual";
-
-export type BillingCycle = "monthly" | "annual";
-
-export interface PaymentMethod {
-  slug: PaymentProvider;
-  name: string;
-  category: "wallet" | "bank" | "card" | "manual";
-  description: string;
-  logo_hint: string;
+export async function fetchPaymentMethods(): Promise<PaymentMethodOption[]> {
+  return api.get("/api/v1/billing/payment-methods");
 }
 
-export interface PlanRow {
-  id: number;
-  slug: string;
-  name: string;
-  tagline: string;
-  price_pkr_monthly: string;
-  price_pkr_annual: string | null;
-  features: string[];
-  display_order: number;
+export async function fetchCurrentSubscription(): Promise<CurrentSubscription> {
+  return api.get("/api/v1/billing/me");
 }
 
-export interface CheckoutResponse {
-  intent_id: string;
-  provider: PaymentProvider;
-  checkout_url: string;
-  is_sandbox: boolean;
-  instructions: string | null;
-  request_payload: Record<string, string>;
-  amount_pkr: string;
-  expires_at: string | null;
+export async function startCheckout(input: CheckoutRequest): Promise<CheckoutResponse> {
+  return api.post("/api/v1/billing/checkout", input);
 }
 
-export interface IntentStatus {
-  id: string;
-  provider: PaymentProvider;
-  status: "pending" | "redirected" | "paid" | "failed" | "canceled" | "expired";
-  amount_pkr: string;
-  billing_cycle: BillingCycle;
-  plan_slug: string;
-  failure_reason: string | null;
-  created_at: string;
-  returned_at: string | null;
-}
-
-export async function fetchPlans(): Promise<PlanRow[]> {
-  return api("/api/v1/billing/plans");
-}
-
-export async function fetchPaymentMethods(): Promise<PaymentMethod[]> {
-  return api("/api/v1/billing/payment-methods");
-}
-
-export async function startCheckout(input: {
-  plan_slug: string;
-  provider: PaymentProvider;
-  billing_cycle: BillingCycle;
-}): Promise<CheckoutResponse> {
-  return api("/api/v1/billing/checkout", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export async function fetchIntentStatus(intentId: string): Promise<IntentStatus> {
-  return api(`/api/v1/billing/intent/${intentId}`);
+export async function fetchIntentStatus(intentId: string): Promise<PaymentIntentStatus> {
+  return api.get(`/api/v1/billing/intent/${intentId}`);
 }
 
 export async function sandboxConfirm(intentId: string): Promise<{
@@ -110,7 +64,7 @@ export async function sandboxConfirm(intentId: string): Promise<{
   intent_id: string;
   status: string;
 }> {
-  return api(`/api/v1/billing/sandbox-confirm/${intentId}`, { method: "POST" });
+  return api.post(`/api/v1/billing/sandbox-confirm/${intentId}`);
 }
 
 /**

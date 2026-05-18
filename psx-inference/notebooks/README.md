@@ -1,15 +1,29 @@
-# Training the PSX prediction models — Colab Pro walkthrough
+# Training the PSX prediction models — Colab walkthrough
 
 Step-by-step instructions for taking the heuristic ensemble shipped with
 the repo and replacing it with **real trained ML models** (XGBoost +
 Random Forest + LSTM + a stacked logistic meta-model per symbol).
 
-> **Total time, end-to-end:** ~8 hours of your active attention spread
-> across ~3 days. ~5 hours of that is unattended Colab training; you
-> can tab away.
->
-> **Cost:** $10 for one month of Colab Pro. Cancel after the run if you
-> don't want to keep paying.
+## Pick your Colab tier
+
+| Tier | Cost | Best for | Caveats |
+|---|---|---|---|
+| **Colab Free** | $0 | First-time runs; OK keeping a tab open | 90-min idle, 12-h cap. The notebook is built to survive both (saves each symbol to Drive immediately, resumes on rerun) |
+| **Colab Pro** | $10/mo | Unattended runs; no disconnect anxiety | International card from Pakistan required |
+
+The notebook works identically on both. The only differences:
+
+- **On Free:** keep the tab visible during training, or paste the
+  anti-idle JS snippet (shown in the notebook's intro cell) into your
+  browser's DevTools to keep the runtime alive.
+- **On Pro:** start it and walk away for 5 hours.
+
+If Colab Free disconnects mid-run, **nothing is lost** — every trained
+symbol is already in your Drive. Reconnect, rerun, and the loop picks
+up where it left off.
+
+> **Total time end-to-end:** ~8 hours of your active attention spread
+> across ~3 days. ~5 hours of that is unattended Colab training.
 
 ---
 
@@ -18,8 +32,8 @@ Random Forest + LSTM + a stacked logistic meta-model per symbol).
 1. **Local Postgres with the EOD ingest run** — the trainer needs at
    least ~250 OHLCV bars per symbol. If you haven't run the ingest
    yet, complete Phase 6 of `REMAINING_BUILD_PLAN.md` first.
-2. **Google account + Colab Pro subscription** ($10/mo via
-   colab.research.google.com → Upgrade to Pro).
+2. **Google account** — Colab Free is fine. Pro ($10/mo) is optional
+   and only buys you longer idle/cap windows.
 3. **psx-api Python venv** with the deps installed locally. You'll
    need `pandas` + `pyarrow` for the export step. They're already in
    `psx-ingest/pyproject.toml`; if you're using the `psx-api` venv,
@@ -174,8 +188,31 @@ handles the disabled state via the existing
 | Cell 3: `class balance: y=1 X%` is wildly off 50% | Confirm `y_next_day_up` is computed against next-day close not next-day open. Should be ~48-52% for PSX |
 | LSTM training is extremely slow | Confirm Runtime → GPU is selected; check cell 0 prints `CUDA available: True` |
 | `convert_xgboost` import error | Older xgboost versions need `onnxmltools` instead. The notebook pins the working versions |
-| Colab disconnects after 90 min | Either keep a tab open and active, or pay for Pro (gets 24h background) |
+| Colab Free disconnects after 90 min | Either keep the tab active, paste the anti-idle JS snippet (see notebook intro cell), or upgrade to Pro. **Your trained models so far are safe in Drive — just reconnect and Run All to resume.** |
+| Colab session hits the 12-h cap | Same as disconnect — reconnect, Run All, the loop will skip everything already trained and continue. |
 | Some symbols `predictions_disabled='only X rows'` | Symbol doesn't have enough OHLCV history yet. Either backfill more data or accept the disabled state |
 
 If you hit anything else, the training report CSV
 (`models/onnx/training_report.csv`) has per-symbol diagnostics.
+
+---
+
+## How resume works (under the hood)
+
+The notebook treats `manifest.json` as a "done marker":
+
+1. Before training a symbol, the loop checks `models/onnx/{SYMBOL}/manifest.json`.
+2. If the file exists, the symbol is skipped — already trained.
+3. Manifest is written **last** in each symbol's training step,
+   *after* every ONNX file is saved. So a half-finished symbol won't
+   have a manifest and will be retrained on the next pass.
+
+This means:
+
+- **Disconnect at any time** — already-trained symbols are safe in
+  Drive, half-trained ones get redone cleanly.
+- **Want to retrain a single symbol?** Delete its folder from
+  `MyDrive/psx-ai/models/onnx/{SYMBOL}/` and rerun. Just that symbol
+  gets retrained; everything else is skipped.
+- **Want a full fresh retrain?** Delete the whole `MyDrive/psx-ai/models/onnx/`
+  folder before running.

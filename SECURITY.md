@@ -95,18 +95,41 @@ Honest gap list:
 
 ## Automated scans
 
-Run `scripts/security-scan.sh` to execute:
+We don't run scheduled CI for the security scan — the project is on
+the GitHub free tier and we'd rather have one well-rehearsed local
+flow than a half-trusted automated one. Run the scan manually before
+each release:
+
+```bash
+# Unix / macOS
+./scripts/security-scan.sh
+
+# Windows
+.\scripts\security-scan.ps1
+```
+
+Both scripts execute the same four checks with matching exit codes:
 
 1. **pip-audit** — Python dependencies for known CVEs
-2. **pnpm audit** — Node dependencies
+2. **pnpm audit** — Node dependencies (high+ severity)
 3. **ruff bandit lint** — flag dangerous Python patterns (eval,
    subprocess shell=True, hardcoded passwords). Already integrated as
    the `S` rule set in `pyproject.toml`.
 4. **basic header checks** — verify the production endpoint returns
-   the expected security headers
+   the expected security headers (set `PROD_URL` env var).
 
-Wire `scripts/security-scan.sh` into CI on a weekly schedule. Failures
-on critical findings should block merges to `main`.
+For the smaller, faster checks that should run **every commit**, we
+ship `.pre-commit-config.yaml`. Install once:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+The hook runs ruff + ruff-format + detect-secrets + private-key
+detection + large-file blocker on every `git commit`. Bypass with
+`--no-verify` only when you've manually verified the failing files
+are safe.
 
 ---
 

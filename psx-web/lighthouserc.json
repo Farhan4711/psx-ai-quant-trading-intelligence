@@ -1,0 +1,33 @@
+{
+  "$comment": "Local Lighthouse CI config. Run with: pnpm run lighthouse (after `pnpm dlx @lhci/cli@0.14.x install` or installing globally). Builds + starts the production server, audits the 5 highest-traffic routes, asserts thresholds. Adjust thresholds upward as the codebase improves — we set the floor at acceptable, not aspirational.",
+  "ci": {
+    "collect": {
+      "startServerCommand": "pnpm run build && pnpm run start",
+      "startServerReadyPattern": "ready started server on",
+      "url": [
+        "http://localhost:3000/",
+        "http://localhost:3000/pricing",
+        "http://localhost:3000/features",
+        "http://localhost:3000/login",
+        "http://localhost:3000/signup"
+      ],
+      "numberOfRuns": 1,
+      "settings": {
+        "preset": "desktop",
+        "skipAudits": ["uses-http2"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance":     ["warn", { "minScore": 0.85 }],
+        "categories:accessibility":   ["error", { "minScore": 0.90 }],
+        "categories:best-practices":  ["warn", { "minScore": 0.90 }],
+        "categories:seo":             ["warn", { "minScore": 0.90 }]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}

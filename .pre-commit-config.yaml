@@ -1,0 +1,54 @@
+# Phase 11 Step 96 — local pre-commit gates.
+#
+# Runs every `git commit` so dangerous patterns are caught before the
+# commit lands, not days later in a CI run we don't have. Install once:
+#
+#     pip install pre-commit
+#     pre-commit install
+#
+# Skip a single commit (emergencies only) with `git commit --no-verify`.
+#
+# The full security scan (pip-audit + pnpm audit + production headers)
+# is heavier and stays out-of-hook — run `./scripts/security-scan.ps1`
+# (Windows) or `./scripts/security-scan.sh` (Unix) weekly.
+
+repos:
+  # ── Generic hygiene ──────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+
+  # ── Python: ruff (lint + security S-rules) ────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.3
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        files: ^(psx-api|psx-ingest|psx-inference)/.*\.py$
+      - id: ruff-format
+        files: ^(psx-api|psx-ingest|psx-inference)/.*\.py$
+
+  # ── Block accidentally-committed secrets ─────────────────────────
+  # Catches AWS keys, GitHub PATs, Stripe keys, JazzCash salts that
+  # look HMAC-ish, etc. before they leave the laptop.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        # Don't scan the lockfiles (huge + already vetted) or the
+        # build-plan markdown (it mentions placeholder tokens).
+        exclude: |
+          (?x)^(
+            pnpm-lock\.yaml|
+            psx-shared/typescript/src/generated\.ts|
+            REMAINING_BUILD_PLAN\.md|
+            PSX_WebApp_Build_Plan\.md
+          )$

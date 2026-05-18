@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BarChart2 } from "lucide-react";
+import { SkipToContent } from "@/components/a11y/SkipToContent";
 
 const NAV = [
   { href: "/features", label: "Features" },
@@ -15,16 +16,18 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-white">
+      <SkipToContent />
       <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
           <Link
             href="/"
-            className="flex items-center gap-2 text-lg font-bold text-blue-700"
+            aria-label="PSX AI — home"
+            className="flex items-center gap-2 rounded-md text-lg font-bold text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2"
           >
-            <BarChart2 className="h-5 w-5" />
+            <BarChart2 className="h-5 w-5" aria-hidden="true" />
             PSX AI
           </Link>
-          <nav className="hidden items-center gap-1 sm:flex">
+          <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
             {NAV.map((n) => (
               <Link
                 key={n.href}
@@ -52,16 +55,17 @@ export default function MarketingLayout({
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main id="main-content" className="flex-1">{children}</main>
 
       <footer className="border-t border-gray-200 bg-gray-50">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-4 sm:px-6">
           <div>
             <Link
               href="/"
+              aria-label="PSX AI — home"
               className="flex items-center gap-2 text-base font-bold text-blue-700"
             >
-              <BarChart2 className="h-5 w-5" />
+              <BarChart2 className="h-5 w-5" aria-hidden="true" />
               PSX AI
             </Link>
             <p className="mt-2 max-w-xs text-xs text-gray-500">

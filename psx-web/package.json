@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "audit": "pnpm audit --audit-level=high",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@auth/core": "0.37.2",

@@ -1,23 +1,24 @@
 """
 Stacked-ensemble prediction interface.
 
-Phase 2 ships a **heuristic placeholder** ensemble. Real LSTM + XGBoost +
-RandomForest training requires:
+Two modes — selected at call time based on whether the trained
+inference service is reachable:
 
-  - 5+ years of clean OHLCV across the top-50 PSX names
-  - Labelled training data + proper time-series CV
-  - GPU/CPU budget for training + ONNX serialisation
-  - A retraining cron (Step 46)
+  REMOTE  (Phase 12+): if `settings.inference_service_url` is set and
+          a model bundle for the requested symbol exists, we POST the
+          features to psx-inference and use the real XGBoost + RF +
+          LSTM + stacked-logistic result.
 
-None of which we have running yet. So we keep the **interface** real (a
-3-model ensemble + logistic stacking + variance-based confidence) but
-swap in a deterministic heuristic that scores the feature vector using
-hand-tuned weights derived from the published research baseline (the
-build plan cites Williams %R, Momentum, Disparity 5 as the three
-strongest features on PSX).
+  LOCAL   (default until models are trained): a deterministic
+          heuristic that scores the feature vector using hand-tuned
+          weights derived from published research baselines (the
+          build plan cites Williams %R, Momentum, Disparity 5 as the
+          three strongest features on PSX).
 
-When real ONNX models drop in, the only file that changes is this one —
-the service, schema, and UI keep working.
+The output contract is identical in both modes — the UI and the
+`/api/v1/securities/{symbol}/prediction` schema don't change when
+real models go live. `model_version` tells you which path produced
+the row ("heuristic-v0.1.0" vs "real-v1").
 
 Output contract:
   - probability_up:  P(close[t+1] > close[t]) ∈ [0,1]
@@ -29,12 +30,20 @@ Output contract:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from math import exp
 from statistics import variance
 
+import httpx
+
+from psx_api.config import settings
+
+logger = logging.getLogger(__name__)
+
 
 MODEL_VERSION = "heuristic-v0.1.0"
+REMOTE_TIMEOUT_SECONDS = 1.5    # tight: heuristic fallback if inference is slow
 
 
 @dataclass(frozen=True)
@@ -208,11 +217,110 @@ def _top_contributions(features: dict, probability: float) -> list[FeatureContri
     return [fc for _, fc in scored[:3]]
 
 
+# ── Remote inference (real ONNX models, when available) ───────────────
+
+
+def _try_remote_predict(
+    symbol: str,
+    features: dict,
+    *,
+    window: list[dict] | None = None,
+    horizon_days: int = 1,
+) -> Prediction | None:
+    """
+    POST to psx-inference; on any failure (no URL configured, service
+    down, model not trained for this symbol, timeout) return None so
+    the caller falls back to the heuristic.
+
+    We deliberately swallow every exception because the heuristic is a
+    valid graceful-degradation path — a flaky inference service must
+    never break the /prediction endpoint.
+    """
+    url = (settings.inference_service_url or "").rstrip("/")
+    if not url:
+        return None
+    payload: dict = {"symbol": symbol, "features": features}
+    if window:
+        payload["window"] = window
+    try:
+        resp = httpx.post(
+            f"{url}/predict",
+            json=payload,
+            timeout=REMOTE_TIMEOUT_SECONDS,
+        )
+    except (httpx.HTTPError, OSError) as exc:
+        logger.warning("inference.unreachable", extra={"error": str(exc)})
+        return None
+    if resp.status_code == 404:
+        # Symbol not trained — silent fall-through. The heuristic
+        # ensemble works for every symbol.
+        return None
+    if resp.status_code >= 400:
+        logger.warning(
+            "inference.error",
+            extra={"status": resp.status_code, "body": resp.text[:200]},
+        )
+        return None
+    try:
+        data = resp.json()
+    except ValueError:
+        return None
+    if data.get("predictions_disabled"):
+        # Inference service has the symbol but its model failed the
+        # quality gate. Surface that to the caller.
+        return Prediction(
+            probability_up=0.5,
+            confidence="low",
+            confidence_score=0.0,
+            sub_model_probabilities={},
+            top_features=[],
+            model_version=str(data.get("model_version", "real-v1")),
+            horizon_days=horizon_days,
+        )
+    probs = dict(data.get("sub_probabilities") or {})
+    prob_up = float(data["prob_up"])
+    confidence = str(data.get("confidence", "medium"))
+    # Re-derive a 0..1 confidence_score from the variance of sub-probs
+    # to keep the existing UI's gauge working.
+    _, score = (
+        _confidence(list(probs.values())) if probs else ("low", 0.0)
+    )
+    top = _top_contributions(features, prob_up)
+    return Prediction(
+        probability_up=prob_up,
+        confidence=confidence,
+        confidence_score=score,
+        sub_model_probabilities=probs,
+        top_features=top,
+        model_version=str(data.get("model_version", "real-v1")),
+        horizon_days=horizon_days,
+    )
+
+
 # ── Public ──────────────────────────────────────────────────────────────
 
 
-def predict(features: dict, *, horizon_days: int = 1) -> Prediction:
-    """One-shot: features → ensembled probability + confidence + top features."""
+def predict(
+    features: dict,
+    *,
+    symbol: str | None = None,
+    window: list[dict] | None = None,
+    horizon_days: int = 1,
+) -> Prediction:
+    """One-shot: features → ensembled probability + confidence + top features.
+
+    If `symbol` is provided and an inference service is configured + has
+    a trained model for it, we use the real models. Otherwise we fall
+    back to the heuristic ensemble. The fallback is silent by design —
+    callers never need branchy logic.
+    """
+    if symbol:
+        remote = _try_remote_predict(
+            symbol, features, window=window, horizon_days=horizon_days
+        )
+        if remote is not None:
+            return remote
+
     probs = {
         "lstm": _model_lstm_proxy(features),
         "xgboost": _model_xgb_proxy(features),

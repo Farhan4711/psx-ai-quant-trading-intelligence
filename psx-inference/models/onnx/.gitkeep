@@ -1,0 +1,17 @@
+# Per-symbol ONNX bundles produced by psx-inference/notebooks/train_models.ipynb
+# land here. The directory ships empty in the repo; once you've run
+# the Colab notebook you'll drop one folder per trained symbol in here:
+#
+#   psx-inference/models/onnx/
+#       HBL/
+#           xgb.onnx
+#           rf.onnx
+#           lstm.onnx
+#           meta.onnx
+#           manifest.json
+#       UBL/
+#           ...
+#
+# Files are small (~150 KB per symbol) so we commit them to git rather
+# than uploading to an artifact store — keeps reviewers honest, and
+# inference can boot offline.

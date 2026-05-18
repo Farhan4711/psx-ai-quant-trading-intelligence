@@ -27,7 +27,11 @@ def _configure_sentry() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("psx-inference starting", environment=settings.environment)
-    # Phase 2: load ONNX models into memory here
+    # Phase 12: pre-load every per-symbol ONNX bundle so the first
+    # /predict call doesn't pay the cold-start cost. ModelRegistry is a
+    # singleton so this also primes the same instance the routers use.
+    from psx_inference.inference import ModelRegistry  # noqa: PLC0415
+    ModelRegistry.get().load()
     yield
     logger.info("psx-inference shutting down")
 
@@ -52,8 +56,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    from psx_inference.routers import health
+    from psx_inference.routers import health, predict
     app.include_router(health.router)
+    app.include_router(predict.router)
 
     return app
 

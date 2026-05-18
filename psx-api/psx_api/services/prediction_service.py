@@ -77,7 +77,13 @@ class PredictionService:
 
         context = await self._market_context(sec, as_of)
         features = compute_features(bar_objs, context=context)
-        result = ensemble.predict(features, horizon_days=horizon_days)
+        # Pass `symbol` so the ensemble can route to the trained
+        # inference service (Phase 12). Falls back to the heuristic
+        # silently if the service is unreachable or has no model for
+        # this symbol — caller behaviour is unchanged either way.
+        result = ensemble.predict(
+            features, symbol=symbol, horizon_days=horizon_days
+        )
 
         # Persist (best-effort — duplicate (symbol, as_of_date, version)
         # for the same trading day is fine to silently ignore)

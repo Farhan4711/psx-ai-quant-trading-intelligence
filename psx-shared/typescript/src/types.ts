@@ -34,6 +34,16 @@ export type DecimalString = string;
 
 // ── Auth / user ─────────────────────────────────────────────────
 
+export type NotificationKind =
+  | "pump_dump"
+  | "kmi_delisting"
+  | "goal_milestone"
+  | "payment_events"
+  | "weekly_summary"
+  | "system";
+
+export type NotificationPrefs = Partial<Record<NotificationKind, boolean>>;
+
 export interface CurrentUser {
   id: UUID;
   email: string;
@@ -45,6 +55,7 @@ export interface CurrentUser {
   shariah_mode: boolean;
   share_anonymously: boolean;
   totp_enabled: boolean;
+  notification_prefs: NotificationPrefs;
   created_at: ISODateTime;
 }
 
@@ -55,6 +66,7 @@ export interface UserSettingsUpdate {
   is_filer?: boolean;
   shariah_mode?: boolean;
   share_anonymously?: boolean;
+  notification_prefs?: NotificationPrefs;
 }
 
 /** One active session row in the Settings → Security tab. */

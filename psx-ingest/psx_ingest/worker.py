@@ -31,6 +31,8 @@ celery_app = Celery(
         "psx_ingest.tasks.adjust_prices",
         "psx_ingest.tasks.news",
         "psx_ingest.tasks.macro",
+        "psx_ingest.tasks.anomaly",
+        "psx_ingest.tasks.benchmark",
     ],
 )
 
@@ -120,5 +122,18 @@ celery_app.conf.beat_schedule = {
     "ingest-macro-daily": {
         "task": "psx_ingest.tasks.macro.ingest_macro_daily",
         "schedule": crontab(hour=17, minute=0),
+    },
+    # ── Anomaly + benchmark batch (overnight) ─────────────────────
+    # Train per-symbol IsolationForest models on 2y of OHLCV at 02:30
+    # PKT (well after EOD ingest + macro scrape have written today's
+    # bars). Aggregate anonymous peer buckets at 03:30 once the
+    # anomaly trainer is done — keeps the worker pool from doubling up.
+    "train-anomaly-models-nightly": {
+        "task": "psx_ingest.tasks.anomaly.train_anomaly_models",
+        "schedule": crontab(hour=2, minute=30),
+    },
+    "aggregate-peer-buckets-nightly": {
+        "task": "psx_ingest.tasks.benchmark.aggregate_peer_buckets",
+        "schedule": crontab(hour=3, minute=30),
     },
 }

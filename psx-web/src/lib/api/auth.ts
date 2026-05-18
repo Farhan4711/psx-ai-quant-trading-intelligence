@@ -1,6 +1,8 @@
 import {
   createApiClient,
   type CurrentUser,
+  type NotificationKind,
+  type NotificationPrefs,
   type SessionInfo,
   type UserSettingsUpdate,
 } from "@psx/shared";
@@ -8,7 +10,13 @@ import {
 // Re-export so existing callers (`import { CurrentUser } from "@/lib/api/auth"`)
 // keep working during the migration. New code should import from
 // `@psx/shared` directly.
-export type { CurrentUser, SessionInfo, UserSettingsUpdate };
+export type {
+  CurrentUser,
+  NotificationKind,
+  NotificationPrefs,
+  SessionInfo,
+  UserSettingsUpdate,
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const api = createApiClient({ baseUrl: API_URL });

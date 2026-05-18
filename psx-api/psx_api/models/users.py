@@ -1,7 +1,8 @@
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import INET, UUID
+from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from psx_api.models.base import Base
@@ -37,6 +38,16 @@ class User(Base):
     # TOTP second factor
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Step 95: per-kind notification mute toggles. Missing keys → True.
+    notification_prefs: Mapped[Any] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=(
+            '{"pump_dump": true, "kmi_delisting": true, '
+            '"goal_milestone": true, "payment_events": true, '
+            '"weekly_summary": true, "system": true}'
+        ),
+    )
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         nullable=False, server_default=func.now(), onupdate=func.now()

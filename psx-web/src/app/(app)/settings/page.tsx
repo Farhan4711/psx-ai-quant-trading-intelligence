@@ -9,6 +9,8 @@ import {
   revokeSession,
   updateCurrentUser,
   type CurrentUser,
+  type NotificationKind,
+  type NotificationPrefs,
   type SessionInfo,
 } from "@/lib/api/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -67,11 +69,13 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6 space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-500 shadow-sm">
-            Per-channel notification preferences are coming soon. Today every
-            user receives in-app notifications for pump/dump alerts, KMI
-            changes, and payment events.
-          </div>
+          <NotificationsTab
+            user={user}
+            onChange={(patch) =>
+              update.mutate({ notification_prefs: patch })
+            }
+            saving={update.isPending}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -367,6 +371,83 @@ function formatRelative(iso: string): string {
   if (hours < 24)
     return future ? `in ${hours}h` : `${hours}h ago`;
   return future ? `in ${days}d` : `${days}d ago`;
+}
+
+// ── Notifications tab ─────────────────────────────────────────────────
+
+interface NotificationKindMeta {
+  kind: NotificationKind;
+  title: string;
+  description: string;
+}
+
+const NOTIFICATION_KINDS: NotificationKindMeta[] = [
+  {
+    kind: "pump_dump",
+    title: "Pump-and-dump alerts",
+    description:
+      "Volume + price spikes without news context on stocks you watch or hold.",
+  },
+  {
+    kind: "kmi_delisting",
+    title: "KMI compliance changes",
+    description:
+      "When a stock you hold is added to or removed from the KMI All-Share index.",
+  },
+  {
+    kind: "goal_milestone",
+    title: "Goal milestones",
+    description:
+      "When a financial goal hits 25%, 50%, 75%, or 100% of its target.",
+  },
+  {
+    kind: "payment_events",
+    title: "Subscription + payment events",
+    description:
+      "Successful payments, failed renewals, and upcoming plan expiry.",
+  },
+  {
+    kind: "weekly_summary",
+    title: "Weekly summary",
+    description:
+      "A Saturday digest of your portfolio, watchlist movers, and any alerts.",
+  },
+  {
+    kind: "system",
+    title: "System notices",
+    description:
+      "Account security events and important platform-wide announcements.",
+  },
+];
+
+function NotificationsTab({
+  user,
+  onChange,
+  saving,
+}: {
+  user: CurrentUser;
+  onChange: (patch: NotificationPrefs) => void;
+  saving: boolean;
+}) {
+  const prefs = user.notification_prefs ?? {};
+  return (
+    <>
+      <p className="text-sm text-gray-500">
+        Notifications are delivered in-app (the bell icon at the top
+        right). Email + push delivery channels land in a future step.
+      </p>
+      {NOTIFICATION_KINDS.map((meta) => (
+        <ToggleCard
+          key={meta.kind}
+          title={meta.title}
+          description={meta.description}
+          enabled={prefs[meta.kind] !== false}
+          onChange={(v) => onChange({ [meta.kind]: v })}
+          loading={saving}
+        />
+      ))}
+    </>
+  );
 }
 
 // ── Reusable toggle ───────────────────────────────────────────────────

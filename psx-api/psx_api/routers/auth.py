@@ -170,6 +170,12 @@ async def update_me(
         user.full_name = body.full_name
     if body.share_anonymously is not None:
         user.share_anonymously = body.share_anonymously
+    if body.notification_prefs is not None:
+        # Shallow merge — UI sends only the toggles that changed; we
+        # keep any kinds the user hadn't touched at their existing value.
+        merged = dict(user.notification_prefs or {})
+        merged.update(body.notification_prefs)
+        user.notification_prefs = merged
     if body.date_of_birth is not None:
         from datetime import date as _date
         try:

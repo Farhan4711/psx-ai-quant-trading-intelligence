@@ -72,6 +72,9 @@ class UserSettingsUpdate(BaseModel):
     # Phase 4 Step 59: opt-in to anonymized benchmarking + age bucketing
     share_anonymously: bool | None = None
     date_of_birth: str | None = None  # YYYY-MM-DD; service parses to date
+    # Phase 10 Step 95: per-kind notification preferences. Partial
+    # patch — keys not in the payload preserve their current value.
+    notification_prefs: dict[str, bool] | None = None
 
 
 class UserResponse(BaseModel):
@@ -84,6 +87,7 @@ class UserResponse(BaseModel):
     is_filer: bool
     shariah_mode: bool
     totp_enabled: bool
+    notification_prefs: dict[str, bool]
     created_at: datetime
 
     @classmethod
@@ -98,5 +102,6 @@ class UserResponse(BaseModel):
             is_filer=u.is_filer,
             shariah_mode=u.shariah_mode,
             totp_enabled=u.totp_enabled,
+            notification_prefs=dict(u.notification_prefs or {}),
             created_at=u.created_at,
         )

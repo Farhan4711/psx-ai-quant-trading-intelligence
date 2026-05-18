@@ -8,6 +8,7 @@ from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from psx_api.models.community import Notification
+from psx_api.models.users import User
 
 
 # Mirrors the DB CHECK constraint added in migration 0012. Keeping this
@@ -30,12 +31,24 @@ class NotificationService:
         title: str,
         body: str,
         link_path: str | None = None,
-    ) -> Notification:
+    ) -> Notification | None:
+        """Insert a notification row honouring the user's per-kind
+        preferences (Step 95). Returns None when the user has muted
+        this kind — callers shouldn't treat that as an error."""
         if kind not in VALID_KINDS:
             raise ValueError(
                 f"Unknown notification kind {kind!r}. "
                 f"Must be one of: {sorted(VALID_KINDS)}"
             )
+        # Per-kind mute: missing keys default to True (= unmuted) so a
+        # new notification kind isn't silently muted for existing users.
+        prefs = (
+            await self._db.execute(
+                select(User.notification_prefs).where(User.id == user_id)
+            )
+        ).scalar_one_or_none() or {}
+        if prefs.get(kind, True) is False:
+            return None
         n = Notification(
             user_id=user_id, kind=kind, title=title, body=body, link_path=link_path
         )

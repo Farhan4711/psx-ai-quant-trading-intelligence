@@ -60,7 +60,7 @@ from psx_api.predictions.features import (  # noqa: E402
 )
 
 
-_DEFAULT_DB_URL = "postgresql+asyncpg://psx_user:psx_pass@localhost:5432/psx_dev"
+_DEFAULT_DB_URL = "postgresql+asyncpg://psx_user:psx_pass_dev@localhost:5433/psx_dev"
 _DEFAULT_OUT = _REPO_ROOT / "data" / "training" / "psx_features.parquet"
 _MIN_BARS_PER_SYMBOL = 80   # below this, feature warm-ups won't be satisfied
 

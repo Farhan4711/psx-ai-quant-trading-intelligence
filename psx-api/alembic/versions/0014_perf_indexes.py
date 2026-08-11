@@ -32,6 +32,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # ADD THIS LINE TO PREVENT THE CRASH:
+    op.execute("DROP INDEX IF EXISTS ix_ohlcv_daily_symbol_date_desc;")
+
     # ── ohlcv_daily ───────────────────────────────────────────────
     # Existing index is on (symbol, date) inferred from PK; ROW_NUMBER
     # subqueries (used by quote batch + holdings dashboard) scan by

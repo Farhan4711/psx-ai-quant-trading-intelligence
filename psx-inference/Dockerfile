@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 RUN pip install uv==0.5.4
 COPY pyproject.toml ./
+COPY psx_inference/ ./psx_inference/
 # Install only inference deps (no torch/scikit-learn training stack)
 RUN uv venv /app/.venv && \
     uv pip install --python /app/.venv/bin/python -e "." --no-dev

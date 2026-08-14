@@ -1,0 +1,35 @@
+# Used as the build context for psx-web (repo root, for the pnpm workspace).
+# Keep this narrow — anything not needed to build psx-web should be excluded.
+
+.git/
+.claude/
+.pnpm-store/
+
+# Other services — not needed to build the web image
+psx-api/
+psx-ingest/
+psx-inference/
+psx-infra/
+
+# Node
+**/node_modules/
+**/.next/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+
+# Data / backups — never belong in an image layer
+*.dump
+*.sql
+*.parquet
+*.tsv
+*.bak
+*.html
+
+# Env / secrets
+.env
+.env.*
+!.env.example

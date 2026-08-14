@@ -14,6 +14,7 @@ WORKDIR /app
 RUN pip install uv==0.5.4
 
 COPY pyproject.toml ./
+COPY psx_api/ ./psx_api/
 RUN uv venv /app/.venv && \
     uv pip install --python /app/.venv/bin/python -e "." --no-dev
 

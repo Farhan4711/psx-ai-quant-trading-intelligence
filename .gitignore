@@ -142,3 +142,13 @@ playwright/.cache/
 psx-docs/legal/certificates/
 psx-docs/legal/cnic/
 psx-docs/legal/contracts/signed/
+
+# ─── Local DB backups / scrape artifacts (never commit — see psx-ingest) ─────
+psx-ingest/*.dump
+psx-ingest/*.sql
+psx-ingest/recovered_*
+psx-ingest/easydata_*.html
+psx-ingest/kibor_*
+psx-ingest/*kibor*.pdf
+*.bak
+/test.parquet

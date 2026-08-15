@@ -54,13 +54,21 @@ async def _upsert_action(session: AsyncSession, row: CorporateActionRow) -> bool
                  :raw_announcement)
             ON CONFLICT (symbol, action_type, announcement_date)
             DO UPDATE SET
-                ex_date          = COALESCE(EXCLUDED.ex_date, corporate_actions.ex_date),
-                record_date      = COALESCE(EXCLUDED.record_date, corporate_actions.record_date),
-                payment_date     = COALESCE(EXCLUDED.payment_date, corporate_actions.payment_date),
-                amount_per_share = COALESCE(EXCLUDED.amount_per_share, corporate_actions.amount_per_share),
-                ratio_numerator  = COALESCE(EXCLUDED.ratio_numerator, corporate_actions.ratio_numerator),
-                ratio_denominator= COALESCE(EXCLUDED.ratio_denominator, corporate_actions.ratio_denominator),
-                raw_announcement = COALESCE(EXCLUDED.raw_announcement, corporate_actions.raw_announcement)
+                ex_date = COALESCE(EXCLUDED.ex_date, corporate_actions.ex_date),
+                record_date = COALESCE(EXCLUDED.record_date, corporate_actions.record_date),
+                payment_date = COALESCE(EXCLUDED.payment_date, corporate_actions.payment_date),
+                amount_per_share = COALESCE(
+                    EXCLUDED.amount_per_share, corporate_actions.amount_per_share
+                ),
+                ratio_numerator = COALESCE(
+                    EXCLUDED.ratio_numerator, corporate_actions.ratio_numerator
+                ),
+                ratio_denominator = COALESCE(
+                    EXCLUDED.ratio_denominator, corporate_actions.ratio_denominator
+                ),
+                raw_announcement = COALESCE(
+                    EXCLUDED.raw_announcement, corporate_actions.raw_announcement
+                )
             RETURNING (xmax = 0) AS was_inserted
         """),
         {
@@ -164,11 +172,15 @@ def ingest_corporate_actions(
         to_date_iso:   ISO date string. Defaults to today PKT.
     """
     today = _today_pkt()
-    from_date = date.fromisoformat(from_date_iso) if from_date_iso else today - timedelta(days=_LOOKBACK_DAYS)
+    from_date = (
+        date.fromisoformat(from_date_iso)
+        if from_date_iso
+        else today - timedelta(days=_LOOKBACK_DAYS)
+    )
     to_date = date.fromisoformat(to_date_iso) if to_date_iso else today
 
     try:
         return asyncio.run(_run_ingest(from_date, to_date))
     except Exception as exc:
         logger.error("ingest_corporate_actions failed, will retry", error=str(exc))
-        raise self.retry(exc=exc)  # type: ignore[attr-defined]
+        raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]

@@ -101,8 +101,10 @@ class TestArchiveToR2:
             mock_settings.storage_secret_access_key = "secret"
             mock_settings.storage_bucket_name = "test-bucket"
 
-            with patch("psx_ingest.tasks.backfill.boto3") as mock_boto3:  # type: ignore[attr-defined]
-                mock_boto3.client.side_effect = Exception("connection refused")
+            # boto3 is imported lazily inside _archive_to_r2 (avoids the import
+            # cost when storage isn't configured), so there's no module-level
+            # attribute to patch — patch the real boto3.client instead.
+            with patch("boto3.client", side_effect=Exception("connection refused")):
                 rows = [_make_row()]
                 # Should not raise — archive failures are non-fatal
                 await _archive_to_r2("ENGRO", date(2024, 1, 1), date(2024, 1, 31), rows)
@@ -111,11 +113,13 @@ class TestArchiveToR2:
 class TestBackfillTask:
     def test_celery_task_is_registered(self) -> None:
         from psx_ingest.tasks.backfill import backfill_ohlcv
+
         assert callable(backfill_ohlcv)
         assert hasattr(backfill_ohlcv, "name")
 
     def test_task_name(self) -> None:
         from psx_ingest.tasks.backfill import backfill_ohlcv
+
         assert backfill_ohlcv.name == "psx_ingest.tasks.backfill.backfill_ohlcv"
 
     def test_task_accepts_date_strings(self) -> None:

@@ -11,8 +11,7 @@ No DB / no Redis / no network — we exercise:
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import httpx
@@ -31,7 +30,6 @@ from psx_ingest.news.extract import (
     extract_mentions,
 )
 from psx_ingest.news.sentiment import score_lexicon
-
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -97,7 +95,9 @@ def test_parse_rss_feed_empty_is_fine() -> None:
 def test_base_scraper_body_extracts_article_text() -> None:
     scraper = BaseNewsScraper()
     body = scraper.parse_article_body(SAMPLE_ARTICLE_HTML)
-    assert "record Q1 profit" in body
+    # The <h1> headline is intentionally excluded — parse_article_body only
+    # pulls <p> content; the headline comes from the RSS feed separately.
+    assert "strong Q1 with profit" in body
     assert "tracker.send" not in body
     assert body.count("\n\n") >= 1  # paragraphs preserved
 
@@ -113,9 +113,7 @@ async def test_throttle_sleeps_between_requests(monkeypatch: pytest.MonkeyPatch)
         sleeps.append(seconds)
 
     # Mock the throttle setting so the test runs fast
-    monkeypatch.setattr(
-        "psx_ingest.news.base.settings.scraper_min_delay_seconds", 1.0
-    )
+    monkeypatch.setattr("psx_ingest.news.base.settings.scraper_min_delay_seconds", 1.0)
     monkeypatch.setattr("asyncio.sleep", fake_sleep)
 
     scraper = BaseNewsScraper()
@@ -164,7 +162,7 @@ class _FixtureScraper(BaseNewsScraper):
             ArticleStub(
                 url="https://example.test/articles/engro-profit-q1",
                 headline="Engro Fertilizers posts record Q1 profit",
-                published_at=datetime.now(tz=timezone.utc),
+                published_at=datetime.now(tz=UTC),
             )
         ]
 
@@ -193,7 +191,7 @@ async def test_fetch_articles_pipeline() -> None:
     article = out[0]
     assert article.source == "fixture"
     assert article.headline == "Engro Fertilizers posts record Q1 profit"
-    assert "record Q1 profit" in article.body
+    assert "strong Q1 with profit" in article.body
 
 
 # ── Sentiment + extraction ───────────────────────────────────────
@@ -210,9 +208,7 @@ def test_sentiment_positive_signal() -> None:
 
 
 def test_sentiment_negative_signal() -> None:
-    result = score_lexicon(
-        "Bank ABC reports a steep loss after regulatory fines."
-    )
+    result = score_lexicon("Bank ABC reports a steep loss after regulatory fines.")
     assert result.polarity < 0
     # "fines" hits the regulatory pattern via "regulatory" word? No — let's
     # not over-assert event_type, just that polarity is negative.
@@ -226,9 +222,7 @@ def test_sentiment_negator_flips_meaning() -> None:
 
 
 def test_entity_extraction_picks_up_company() -> None:
-    aliases = build_alias_index(
-        aliases_from_securities([("ENGRO", "Engro Corporation Limited")])
-    )
+    aliases = build_alias_index(aliases_from_securities([("ENGRO", "Engro Corporation Limited")]))
     mentions = extract_mentions(
         "Engro Corporation posted strong results. ENGRO shares rose.",
         aliases,
@@ -241,10 +235,12 @@ def test_entity_extraction_longer_alias_wins() -> None:
     """Longer aliases should be matched first so they don't get
     eaten by shorter substrings — e.g. 'Engro Fertilizers' must
     map to EFERT, not to ENGRO."""
-    aliases = build_alias_index([
-        ("EFERT", "Engro Fertilizers"),
-        ("ENGRO", "Engro"),
-    ])
+    aliases = build_alias_index(
+        [
+            ("EFERT", "Engro Fertilizers"),
+            ("ENGRO", "Engro"),
+        ]
+    )
     mentions = extract_mentions(
         "Engro Fertilizers reported record earnings.",
         aliases,

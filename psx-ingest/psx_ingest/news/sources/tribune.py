@@ -39,9 +39,7 @@ class TribuneBusinessScraper(BaseNewsScraper):
     def parse_article_body(self, html: str) -> str:
         soup = BeautifulSoup(html, "lxml")
         # Tribune wraps articles in `.story-text` or `.story_main`
-        story = soup.find("span", class_="story-text") or soup.find(
-            "div", class_="story_main"
-        )
+        story = soup.find("span", class_="story-text") or soup.find("div", class_="story_main")
         if story is None:
             return super().parse_article_body(html)
         for junk in story.find_all(["script", "style", "aside", "figure", "iframe"]):

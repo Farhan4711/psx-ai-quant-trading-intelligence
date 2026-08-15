@@ -14,8 +14,7 @@ into the ohlcv_daily TimescaleDB hypertable.
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -91,14 +90,18 @@ async def _run_ingest(trade_date: date) -> dict[str, int]:
     async with DpsScraper() as scraper:
         async with session_factory() as session:
             symbols = await _fetch_active_symbols(session)
-            logger.info("Starting EOD ingest", trade_date=trade_date.isoformat(), symbol_count=len(symbols))
+            logger.info(
+                "Starting EOD ingest", trade_date=trade_date.isoformat(), symbol_count=len(symbols)
+            )
 
         for symbol in symbols:
             try:
                 rows = await scraper.fetch_ohlcv(symbol, trade_date)
 
                 if not rows:
-                    logger.debug("No data returned", symbol=symbol, trade_date=trade_date.isoformat())
+                    logger.debug(
+                        "No data returned", symbol=symbol, trade_date=trade_date.isoformat()
+                    )
                     symbols_ok += 1
                     continue
 
@@ -149,5 +152,9 @@ def ingest_eod_ohlcv(self: object, trade_date: str | None = None) -> dict[str, i
     try:
         return asyncio.run(_run_ingest(target_date))
     except Exception as exc:
-        logger.error("ingest_eod_ohlcv failed, will retry", error=str(exc), trade_date=target_date.isoformat())
-        raise self.retry(exc=exc)  # type: ignore[attr-defined]
+        logger.error(
+            "ingest_eod_ohlcv failed, will retry",
+            error=str(exc),
+            trade_date=target_date.isoformat(),
+        )
+        raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]

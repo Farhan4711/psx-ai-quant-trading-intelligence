@@ -39,7 +39,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -47,11 +47,11 @@ import httpx
 import structlog
 from bs4 import BeautifulSoup, Tag
 
+from psx_ingest.config import settings
+
 # Number of times to retry a request on transient network errors
 _MAX_NETWORK_RETRIES = 3
 _RETRY_SLEEP_SECONDS = 5.0
-
-from psx_ingest.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -271,7 +271,7 @@ class DpsScraper:
         (no VALUE/TURNOVER column — the endpoint does not provide it).
         """
         soup = BeautifulSoup(html, "lxml")
-        table: Tag | None = soup.find("table")  # type: ignore[assignment]
+        table: Tag | None = soup.find("table")
 
         if not table:
             logger.warning(
@@ -291,18 +291,20 @@ class DpsScraper:
 
             # DATE — prefer data-order Unix timestamp for reliability
             date_td = tds[0]
-            unix_ts: str | None = date_td.get("data-order")  # type: ignore[assignment]
+            unix_ts: str | None = date_td.get("data-order")
             date_text = date_td.get_text(strip=True)
 
-            rows.append({
-                "_unix_ts": unix_ts,
-                "_date_text": date_text,
-                "OPEN": tds[1].get_text(strip=True).replace(",", ""),
-                "HIGH": tds[2].get_text(strip=True).replace(",", ""),
-                "LOW": tds[3].get_text(strip=True).replace(",", ""),
-                "CLOSE": tds[4].get_text(strip=True).replace(",", ""),
-                "VOLUME": tds[5].get_text(strip=True).replace(",", ""),
-            })
+            rows.append(
+                {
+                    "_unix_ts": unix_ts,
+                    "_date_text": date_text,
+                    "OPEN": tds[1].get_text(strip=True).replace(",", ""),
+                    "HIGH": tds[2].get_text(strip=True).replace(",", ""),
+                    "LOW": tds[3].get_text(strip=True).replace(",", ""),
+                    "CLOSE": tds[4].get_text(strip=True).replace(",", ""),
+                    "VOLUME": tds[5].get_text(strip=True).replace(",", ""),
+                }
+            )
 
         return rows
 
@@ -357,7 +359,7 @@ class DpsScraper:
         unix_ts = raw.get("_unix_ts")
         if unix_ts:
             try:
-                parsed_date = datetime.utcfromtimestamp(int(unix_ts)).date()
+                parsed_date = datetime.fromtimestamp(int(unix_ts), tz=UTC).date()
             except (ValueError, OSError):
                 pass
 
@@ -365,7 +367,9 @@ class DpsScraper:
             date_text = raw.get("_date_text", "")
             for fmt in ("%b %d, %Y", "%d-%b-%Y", "%Y-%m-%d", "%d/%m/%Y", "%B %d, %Y"):
                 try:
-                    parsed_date = datetime.strptime(date_text.strip(), fmt).date()
+                    parsed_date = datetime.strptime(  # noqa: DTZ007 — date-only, tz n/a
+                        date_text.strip(), fmt
+                    ).date()
                     break
                 except ValueError:
                     continue
@@ -437,7 +441,7 @@ class DpsScraper:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
-    async def __aenter__(self) -> "DpsScraper":
+    async def __aenter__(self) -> DpsScraper:
         return self
 
     async def __aexit__(self, *_: object) -> None:

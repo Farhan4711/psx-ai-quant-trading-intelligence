@@ -15,7 +15,7 @@ Celery beat schedule: runs at 18:00 PKT (after both ingest windows).
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -70,13 +70,15 @@ async def _fetch_events(session: AsyncSession, symbol: str) -> list[CorporateEve
         action_type, ex_date_raw, ann_date_raw, amount_raw, num, den = row
         # Use ex_date if available, fall back to announcement_date as proxy
         effective_date: date = ex_date_raw or ann_date_raw
-        events.append(CorporateEvent(
-            ex_date=effective_date,
-            action_type=action_type,
-            amount_per_share=Decimal(str(amount_raw)) if amount_raw else None,
-            ratio_numerator=int(num) if num else None,
-            ratio_denominator=int(den) if den else None,
-        ))
+        events.append(
+            CorporateEvent(
+                ex_date=effective_date,
+                action_type=action_type,
+                amount_per_share=Decimal(str(amount_raw)) if amount_raw else None,
+                ratio_numerator=int(num) if num else None,
+                ratio_denominator=int(den) if den else None,
+            )
+        )
     return events
 
 
@@ -177,4 +179,4 @@ def recompute_adjusted_prices(
         return asyncio.run(_run_recompute(symbols))
     except Exception as exc:
         logger.error("recompute_adjusted_prices failed", error=str(exc))
-        raise self.retry(exc=exc)  # type: ignore[attr-defined]
+        raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]

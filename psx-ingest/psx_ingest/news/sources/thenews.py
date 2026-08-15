@@ -40,10 +40,7 @@ class TheNewsBusinessScraper(BaseNewsScraper):
     def parse_article_body(self, html: str) -> str:
         soup = BeautifulSoup(html, "lxml")
         # The News uses `.story-detail` or `.detail-content`
-        story = (
-            soup.find("div", class_="detail-content")
-            or soup.find("div", class_="story-detail")
-        )
+        story = soup.find("div", class_="detail-content") or soup.find("div", class_="story-detail")
         if story is None:
             return super().parse_article_body(html)
         for junk in story.find_all(["script", "style", "aside", "figure", "iframe"]):

@@ -29,4 +29,4 @@ def aggregate_peer_buckets(self: object) -> dict[str, int]:
         return summary.as_dict()
     except Exception as exc:
         logger.error("benchmark.task_failed", error=str(exc))
-        raise self.retry(exc=exc)  # type: ignore[attr-defined]
+        raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]

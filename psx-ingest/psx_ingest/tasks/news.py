@@ -52,10 +52,8 @@ async def _run_one_source(scraper_cls: type[BaseNewsScraper]) -> dict[str, int]:
     """Run a single scraper end-to-end: fetch feed → fetch articles →
     persist with mentions + sentiment. Returns the summary dict."""
     engine = create_async_engine(settings.database_url, echo=False)
-    session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-    redis_client = redis_async.from_url(
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    redis_client = redis_async.from_url(  # type: ignore[no-untyped-call]
         settings.redis_url, encoding="utf-8", decode_responses=True
     )
 
@@ -104,7 +102,7 @@ def _make_task(scraper_cls: type[BaseNewsScraper]) -> Any:
                 scraper=scraper_cls.source_slug,
                 error=str(exc),
             )
-            raise self.retry(exc=exc)  # type: ignore[attr-defined]
+            raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]
 
     return _task
 

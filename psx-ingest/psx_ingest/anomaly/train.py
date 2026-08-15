@@ -23,9 +23,8 @@ Skipping symbols
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -33,8 +32,9 @@ import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from psx_ingest.anomaly.features import Bar, FEATURE_ORDER, features_for_bars
+from psx_ingest.anomaly.features import FEATURE_ORDER, Bar, features_for_bars
 from psx_ingest.config import settings
+from psx_ingest.timezone import today_pkt
 
 logger = structlog.get_logger(__name__)
 
@@ -54,6 +54,7 @@ class TrainSummary:
 def _default_model_dir() -> Path:
     """`./models/anomaly/` relative to repo root, override-able via env."""
     import os
+
     override = os.environ.get("PSX_ANOMALY_MODEL_DIR")
     if override:
         return Path(override)
@@ -95,7 +96,7 @@ def fit_one(bars: list[Bar], *, contamination: float = 0.02) -> Any | None:
 
     # Check for constant columns — IsolationForest tolerates them but a
     # symbol with constant volume is a bad-data signal we want to log.
-    by_col = list(zip(*cleaned))
+    by_col = list(zip(*cleaned, strict=False))
     for i, col in enumerate(by_col):
         if min(col) == max(col):
             logger.warning(
@@ -105,7 +106,7 @@ def fit_one(bars: list[Bar], *, contamination: float = 0.02) -> Any | None:
             )
             return None
 
-    from sklearn.ensemble import IsolationForest  # noqa: PLC0415 (lazy import)
+    from sklearn.ensemble import IsolationForest
 
     model = IsolationForest(
         contamination=contamination,
@@ -124,6 +125,7 @@ def _is_finite(v: float) -> bool:
 
 def save_model(model: Any, symbol: str, *, model_dir: Path | None = None) -> Path:
     import joblib  # lazy import
+
     target_dir = model_dir or _default_model_dir()
     target_dir.mkdir(parents=True, exist_ok=True)
     path = target_dir / f"{symbol}.joblib"
@@ -131,7 +133,7 @@ def save_model(model: Any, symbol: str, *, model_dir: Path | None = None) -> Pat
         {
             "model": model,
             "feature_order": list(FEATURE_ORDER),
-            "trained_at": date.today().isoformat(),
+            "trained_at": today_pkt().isoformat(),
         },
         path,
     )
@@ -141,10 +143,8 @@ def save_model(model: Any, symbol: str, *, model_dir: Path | None = None) -> Pat
 # ── Bulk trainer (called by the Celery task) ─────────────────────
 
 
-async def _fetch_bars(
-    session: AsyncSession, symbol: str, lookback_days: int
-) -> list[Bar]:
-    cutoff = date.today() - timedelta(days=lookback_days)
+async def _fetch_bars(session: AsyncSession, symbol: str, lookback_days: int) -> list[Bar]:
+    cutoff = today_pkt() - timedelta(days=lookback_days)
     result = await session.execute(
         text(
             """
@@ -183,9 +183,7 @@ async def train_all(
     """Train one IsolationForest per active symbol. Returns a summary
     suitable for stuffing into a Celery task result / log line."""
     engine = create_async_engine(settings.database_url, echo=False)
-    session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     summary = TrainSummary()
     try:
         async with session_factory() as session:
@@ -205,9 +203,7 @@ async def train_all(
                     summary.symbols_trained += 1
                 except Exception as exc:
                     summary.symbols_failed += 1
-                    logger.error(
-                        "anomaly.train_failed", symbol=symbol, error=str(exc)
-                    )
+                    logger.error("anomaly.train_failed", symbol=symbol, error=str(exc))
     finally:
         await engine.dispose()
 

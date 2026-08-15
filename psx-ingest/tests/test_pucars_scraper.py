@@ -209,7 +209,9 @@ class TestParseAnnouncementsPage:
         assert rows[1].action_type == "bonus"
 
     def test_returns_empty_for_no_table(self, scraper: PucarsScraper) -> None:
-        rows = scraper._parse_announcements_page("<html><body>No data</body></html>", date(2024, 1, 1))
+        rows = scraper._parse_announcements_page(
+            "<html><body>No data</body></html>", date(2024, 1, 1)
+        )
         assert rows == []
 
     def test_skips_header_row(self, scraper: PucarsScraper) -> None:
@@ -223,6 +225,7 @@ class TestParseAnnouncementsPage:
 
     def test_parses_json_fallback(self, scraper: PucarsScraper) -> None:
         import json
+
         data = [
             {
                 "symbol": "LUCK",

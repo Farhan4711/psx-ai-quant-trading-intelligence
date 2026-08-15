@@ -18,7 +18,7 @@ import asyncio
 import sys
 
 import structlog
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from psx_ingest.config import settings
@@ -58,9 +58,11 @@ async def seed_securities(session: AsyncSession) -> dict[str, int]:
             await session.execute(
                 text("""
                     INSERT INTO securities
-                        (symbol, company_name, sector, is_kmi_compliant, is_kse100, is_kse30, is_active, updated_at)
+                        (symbol, company_name, sector, is_kmi_compliant,
+                         is_kse100, is_kse30, is_active, updated_at)
                     VALUES
-                        (:symbol, :company_name, :sector, :is_kmi_compliant, :is_kse100, :is_kse30, true, NOW())
+                        (:symbol, :company_name, :sector, :is_kmi_compliant,
+                         :is_kse100, :is_kse30, true, NOW())
                 """),
                 symbol_data,
             )

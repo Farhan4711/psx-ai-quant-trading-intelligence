@@ -82,9 +82,7 @@ async def load_alias_index(session: AsyncSession) -> list[Alias]:
     return build_alias_index(raw)
 
 
-async def upsert_article(
-    session: AsyncSession, article: NewsArticleRow
-) -> str | None:
+async def upsert_article(session: AsyncSession, article: NewsArticleRow) -> str | None:
     """Insert the article. Returns the new article_id, or None if it
     already existed (URL UNIQUE conflict)."""
     result = await session.execute(
@@ -111,9 +109,7 @@ async def upsert_article(
     return str(row[0]) if row else None
 
 
-async def insert_mention(
-    session: AsyncSession, article_id: str, symbol: str, count: int
-) -> None:
+async def insert_mention(session: AsyncSession, article_id: str, symbol: str, count: int) -> None:
     await session.execute(
         text(
             """

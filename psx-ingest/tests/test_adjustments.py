@@ -9,8 +9,6 @@ wrong adjusted prices silently corrupt every backtest.
 from datetime import date
 from decimal import Decimal
 
-import pytest
-
 from psx_ingest.adjustments import (
     CorporateEvent,
     PriceRow,
@@ -18,8 +16,8 @@ from psx_ingest.adjustments import (
     compute_adjusted_prices,
 )
 
-
 # ── Helper factories ──────────────────────────────────────────────────────────
+
 
 def price(d: str, close: str) -> PriceRow:
     return PriceRow(date=date.fromisoformat(d), close=Decimal(close))
@@ -43,6 +41,7 @@ def event(
 
 # ── No-event baseline ─────────────────────────────────────────────────────────
 
+
 class TestNoEvents:
     def test_adjusted_equals_close_when_no_events(self) -> None:
         prices = [price("2024-01-01", "100"), price("2024-01-02", "102")]
@@ -60,6 +59,7 @@ class TestNoEvents:
 
 # ── Cash dividend adjustment ──────────────────────────────────────────────────
 
+
 class TestCashDividend:
     def test_pre_ex_date_price_reduced_by_dividend(self) -> None:
         """
@@ -68,9 +68,9 @@ class TestCashDividend:
         Post-ex price is unadjusted.
         """
         prices = [
-            price("2024-01-14", "100"),   # before ex-date
-            price("2024-01-15", "95"),    # ex-date (price already reflects dividend)
-            price("2024-01-16", "96"),    # after ex-date
+            price("2024-01-14", "100"),  # before ex-date
+            price("2024-01-15", "95"),  # ex-date (price already reflects dividend)
+            price("2024-01-16", "96"),  # after ex-date
         ]
         events = [event("2024-01-15", "dividend_cash", amount="5")]
         result = compute_adjusted_prices(prices, events)
@@ -113,6 +113,7 @@ class TestCashDividend:
 
 # ── Stock split / bonus adjustment ───────────────────────────────────────────
 
+
 class TestSplitAndBonus:
     def test_2_for_1_split_halves_pre_split_prices(self) -> None:
         """
@@ -120,8 +121,8 @@ class TestSplitAndBonus:
         Pre-split prices multiplied by 1/(1+1) = 0.5.
         """
         prices = [
-            price("2024-01-14", "200"),   # before split
-            price("2024-01-15", "100"),   # after split (already halved)
+            price("2024-01-14", "200"),  # before split
+            price("2024-01-15", "100"),  # after split (already halved)
             price("2024-01-16", "101"),
         ]
         # "1 new share for every 1 held" = 2:1 split
@@ -163,6 +164,7 @@ class TestSplitAndBonus:
 
 # ── AGM / stock dividend (no price effect) ──────────────────────────────────
 
+
 class TestNoEffectEvents:
     def test_agm_does_not_change_prices(self) -> None:
         prices = [price("2024-01-14", "100"), price("2024-01-15", "100")]
@@ -179,6 +181,7 @@ class TestNoEffectEvents:
 
 
 # ── Edge cases ────────────────────────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_adjusted_price_never_below_minimum(self) -> None:
@@ -209,6 +212,7 @@ class TestEdgeCases:
 
 
 # ── _event_to_adjustment unit tests ──────────────────────────────────────────
+
 
 class TestEventToAdjustment:
     def test_cash_dividend_gives_addend(self) -> None:

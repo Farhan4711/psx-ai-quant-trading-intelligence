@@ -16,8 +16,9 @@ negative = more anomalous) by negating and shifting to [0, ∞).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import structlog
 
@@ -34,12 +35,11 @@ def load_model(symbol: str, *, model_dir: Path | None = None) -> Any | None:
     if not path.exists():
         return None
     try:
-        import joblib  # noqa: PLC0415 (lazy import)
+        import joblib
+
         payload = joblib.load(path)
     except Exception as exc:
-        logger.warning(
-            "anomaly.load_failed", symbol=symbol, path=str(path), error=str(exc)
-        )
+        logger.warning("anomaly.load_failed", symbol=symbol, path=str(path), error=str(exc))
         return None
     # Defensive: a payload from an older feature order would silently
     # mis-align columns at scoring time.
@@ -56,12 +56,10 @@ def load_model(symbol: str, *, model_dir: Path | None = None) -> Any | None:
 def predict_anomaly_score(payload: Any, features: Sequence[float]) -> float:
     """Score one feature vector. `features` must be in `FEATURE_ORDER`."""
     if len(features) != len(FEATURE_ORDER):
-        raise ValueError(
-            f"Expected {len(FEATURE_ORDER)} features, got {len(features)}."
-        )
+        raise ValueError(f"Expected {len(FEATURE_ORDER)} features, got {len(features)}.")
     model = payload["model"]
     # sklearn's score_samples: more negative = more anomalous. Shift
     # to a non-negative "louder = more anomalous" scale aligned with
     # the L2 baseline in psx_api.alerts.pump_dump.
-    raw = model.score_samples([list(features)])[0]
+    raw = float(model.score_samples([list(features)])[0])
     return round(max(0.0, -raw), 4)

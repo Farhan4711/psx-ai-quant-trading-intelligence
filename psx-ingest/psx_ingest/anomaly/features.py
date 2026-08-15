@@ -11,9 +11,8 @@ Six features per bar (in stable order):
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
-
 
 FEATURE_ORDER: tuple[str, ...] = (
     "close",
@@ -65,15 +64,9 @@ def features_for_bars(bars: Sequence[Bar]) -> list[list[float]]:
     for i, b in enumerate(bars):
         prev_close = bars[i - 1].close if i > 0 else b.open
         vol_spike = b.volume / vol_ma_20[i] if vol_ma_20[i] > 0 else 0.0
-        price_change_pct = (
-            (b.close - b.open) / b.open * 100 if b.open > 0 else 0.0
-        )
-        intraday_range_pct = (
-            (b.high - b.low) / b.open * 100 if b.open > 0 else 0.0
-        )
-        gap_pct = (
-            (b.open - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
-        )
+        price_change_pct = (b.close - b.open) / b.open * 100 if b.open > 0 else 0.0
+        intraday_range_pct = (b.high - b.low) / b.open * 100 if b.open > 0 else 0.0
+        gap_pct = (b.open - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
         matrix.append(
             [
                 b.close,

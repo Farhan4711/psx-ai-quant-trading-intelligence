@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import gzip
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -104,7 +104,7 @@ async def _archive_to_r2(symbol: str, from_date: date, to_date: date, rows: list
         return
 
     try:
-        import boto3  # type: ignore[import-not-found]
+        import boto3
 
         payload = [
             {
@@ -212,8 +212,8 @@ async def _run_backfill(
     name="psx_ingest.tasks.backfill.backfill_ohlcv",
     bind=True,
     max_retries=1,
-    soft_time_limit=28800,   # 8 hours
-    time_limit=32400,        # 9 hours hard limit
+    soft_time_limit=28800,  # 8 hours
+    time_limit=32400,  # 9 hours hard limit
 )
 def backfill_ohlcv(
     self: object,

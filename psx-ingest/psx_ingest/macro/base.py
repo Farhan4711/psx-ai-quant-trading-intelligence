@@ -51,7 +51,7 @@ class BaseMacroScraper:
         self._client = client
         self._last_request_at: float = 0.0
 
-    async def __aenter__(self) -> "BaseMacroScraper":
+    async def __aenter__(self) -> BaseMacroScraper:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 headers=_HEADERS,

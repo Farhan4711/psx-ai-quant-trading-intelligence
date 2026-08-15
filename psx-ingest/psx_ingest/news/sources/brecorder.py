@@ -11,6 +11,8 @@ Feed: https://www.brecorder.com/feeds/latest-news
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import structlog
 from bs4 import BeautifulSoup
 
@@ -27,7 +29,7 @@ class BusinessRecorderScraper(BaseNewsScraper):
     source_slug = "brecorder"
     display_name = "Business Recorder"
 
-    _FEEDS = [
+    _FEEDS: ClassVar[list[str]] = [
         # Latest-news covers markets + business; we filter post-hoc by
         # mention extraction so a single feed is enough.
         "https://www.brecorder.com/feeds/latest-news",

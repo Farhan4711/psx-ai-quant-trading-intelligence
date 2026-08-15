@@ -14,7 +14,6 @@ from decimal import Decimal
 from psx_ingest.macro.forex import PkrUsdScraper
 from psx_ingest.macro.sbp import SBPScraper, _parse_sbp_date
 
-
 # ── SBP KIBOR ────────────────────────────────────────────────────
 
 

@@ -20,7 +20,6 @@ from psx_ingest.anomaly.features import (
     vol_ma,
 )
 
-
 # ── Pure-Python feature builder ───────────────────────────────────
 
 
@@ -33,10 +32,7 @@ def test_vol_ma_skips_warmup() -> None:
 
 
 def test_features_for_bars_shape_matches_feature_order() -> None:
-    bars = [
-        Bar(open=100, high=102, low=99, close=101, volume=10_000)
-        for _ in range(30)
-    ]
+    bars = [Bar(open=100, high=102, low=99, close=101, volume=10_000) for _ in range(30)]
     matrix = features_for_bars(bars)
     assert len(matrix) == 30
     for row in matrix:
@@ -59,7 +55,7 @@ def test_features_gap_pct_uses_prev_close() -> None:
 
 def _make_bars(n: int) -> list[Bar]:
     """Synthetic trending bars with a small Gaussian noise pattern."""
-    rng = random.Random(42)
+    rng = random.Random(42)  # noqa: S311 — synthetic test fixture, not security-sensitive
     bars: list[Bar] = []
     price = 100.0
     for _ in range(n):
@@ -82,6 +78,7 @@ def _make_bars(n: int) -> list[Bar]:
 def _has_sklearn() -> bool:
     try:
         import sklearn  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -90,12 +87,14 @@ def _has_sklearn() -> bool:
 @pytest.mark.skipif(not _has_sklearn(), reason="sklearn not installed")
 def test_fit_one_returns_none_for_short_history() -> None:
     from psx_ingest.anomaly.train import fit_one
+
     assert fit_one(_make_bars(50)) is None
 
 
 @pytest.mark.skipif(not _has_sklearn(), reason="sklearn not installed")
 def test_fit_one_trains_on_long_history() -> None:
     from psx_ingest.anomaly.train import fit_one
+
     model = fit_one(_make_bars(300))
     assert model is not None
     # Sanity: scoring a "weird" bar (3× normal volume + 6% jump)
@@ -103,9 +102,7 @@ def test_fit_one_trains_on_long_history() -> None:
     from psx_ingest.anomaly.features import features_for_bars
 
     weird = _make_bars(300)
-    weird.append(
-        Bar(open=200, high=220, low=200, close=215, volume=200_000)
-    )
+    weird.append(Bar(open=200, high=220, low=200, close=215, volume=200_000))
     normal_features = features_for_bars(weird[:-1])[-1]
     weird_features = features_for_bars(weird)[-1]
     # IsolationForest score_samples: more negative = more anomalous
@@ -127,6 +124,7 @@ def test_save_and_load_round_trip(tmp_path: Path) -> None:
     assert payload is not None
     # Score is non-negative
     from psx_ingest.anomaly.features import features_for_bars
+
     feats = features_for_bars(bars)[-1]
     score = predict_anomaly_score(payload, feats)
     assert score >= 0.0
@@ -134,4 +132,5 @@ def test_save_and_load_round_trip(tmp_path: Path) -> None:
 
 def test_load_model_returns_none_when_missing(tmp_path: Path) -> None:
     from psx_ingest.anomaly.score import load_model
+
     assert load_model("DOES_NOT_EXIST", model_dir=tmp_path) is None

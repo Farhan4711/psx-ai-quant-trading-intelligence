@@ -83,9 +83,7 @@ class SBPScraper(BaseMacroScraper):
         # Find the table whose header row mentions "Date" and "1-Month"
         target_table = None
         for table in soup.find_all("table"):
-            headers = [
-                th.get_text(strip=True).lower() for th in table.find_all("th")
-            ]
+            headers = [th.get_text(strip=True).lower() for th in table.find_all("th")]
             if "date" in " ".join(headers) and "1-month" in " ".join(headers):
                 target_table = table
                 break
@@ -94,9 +92,7 @@ class SBPScraper(BaseMacroScraper):
             return []
 
         # Map header column index → indicator slug
-        header_cells = [
-            th.get_text(strip=True).lower() for th in target_table.find_all("th")
-        ]
+        header_cells = [th.get_text(strip=True).lower() for th in target_table.find_all("th")]
         col_indicator: dict[int, str] = {}
         for idx, header in enumerate(header_cells):
             for key, slug in _KIBOR_COLUMN_MAP.items():
@@ -156,7 +152,7 @@ def _parse_sbp_date(value: str) -> date | None:
     cleaned = value.strip()
     for fmt in candidates:
         try:
-            return datetime.strptime(cleaned, fmt).date()
+            return datetime.strptime(cleaned, fmt).date()  # noqa: DTZ007 — date-only, tz n/a
         except ValueError:
             continue
     logger.warning("sbp.unparseable_date", value=value)

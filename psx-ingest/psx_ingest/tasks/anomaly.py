@@ -30,4 +30,4 @@ def train_anomaly_models(self: object) -> dict[str, int]:
         return summary_as_dict(summary)
     except Exception as exc:
         logger.error("anomaly.task_failed", error=str(exc))
-        raise self.retry(exc=exc)  # type: ignore[attr-defined]
+        raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]

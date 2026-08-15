@@ -48,9 +48,7 @@ class PkrUsdScraper(BaseMacroScraper):
         # Find a table that mentions both "Bid" and "Offer" in headers.
         target = None
         for table in soup.find_all("table"):
-            headers = [
-                th.get_text(strip=True).lower() for th in table.find_all("th")
-            ]
+            headers = [th.get_text(strip=True).lower() for th in table.find_all("th")]
             joined = " ".join(headers)
             if "bid" in joined and "offer" in joined:
                 target = table
@@ -78,9 +76,7 @@ class PkrUsdScraper(BaseMacroScraper):
             if observed is None:
                 continue
             mid = ((bid + offer) / Decimal(2)).quantize(Decimal("0.0001"))
-            logger.info(
-                "forex.pkr_usd_parsed", date=observed.isoformat(), mid=str(mid)
-            )
+            logger.info("forex.pkr_usd_parsed", date=observed.isoformat(), mid=str(mid))
             return [MacroPoint(indicator="pkr_usd", date=observed, value=mid)]
 
         logger.warning("forex.no_parsable_rows")
@@ -98,7 +94,7 @@ def _try_parse_date(value: str) -> date | None:
     cleaned = value.strip()
     for fmt in candidates:
         try:
-            return datetime.strptime(cleaned, fmt).date()
+            return datetime.strptime(cleaned, fmt).date()  # noqa: DTZ007 — date-only, tz n/a
         except ValueError:
             continue
     return None

@@ -67,10 +67,6 @@ def aliases_from_securities(rows: list[tuple[str, str]]) -> list[tuple[str, str]
             out.append((sym, cleaned))
         first = cleaned.split()[0] if cleaned else ""
         common = {"the", "national", "pakistan", "united", "first", "general"}
-        if (
-            len(first) >= 4
-            and first.lower() not in common
-            and first.lower() != cleaned.lower()
-        ):
+        if len(first) >= 4 and first.lower() not in common and first.lower() != cleaned.lower():
             out.append((sym, first))
     return out

@@ -10,7 +10,6 @@ no benefit to fanning out.
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 import structlog
 from sqlalchemy import text
@@ -49,9 +48,7 @@ async def _upsert_point(session: AsyncSession, point: MacroPoint) -> bool:
 
 async def _run() -> dict[str, int]:
     engine = create_async_engine(settings.database_url, echo=False)
-    session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     points: list[MacroPoint] = []
     async with SBPScraper() as sbp:
@@ -101,4 +98,4 @@ def ingest_macro_daily(self: object) -> dict[str, int]:
         return asyncio.run(_run())
     except Exception as exc:
         logger.error("macro.task_failed", error=str(exc))
-        raise self.retry(exc=exc)  # type: ignore[attr-defined]
+        raise self.retry(exc=exc) from exc  # type: ignore[attr-defined]

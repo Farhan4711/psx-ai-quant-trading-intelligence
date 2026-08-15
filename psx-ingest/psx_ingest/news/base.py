@@ -28,9 +28,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import AsyncIterator
+from datetime import UTC, datetime
 
 import httpx
 import structlog
@@ -106,7 +106,7 @@ class BaseNewsScraper:
 
     # ── Lifecycle ────────────────────────────────────────────────
 
-    async def __aenter__(self) -> "BaseNewsScraper":
+    async def __aenter__(self) -> BaseNewsScraper:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 headers=_DEFAULT_HEADERS,
@@ -198,13 +198,9 @@ class BaseNewsScraper:
         if node is None:
             return ""
         # Strip script/style/aside/figure noise
-        for junk in node.find_all(
-            ["script", "style", "aside", "figure", "iframe", "nav"]
-        ):
+        for junk in node.find_all(["script", "style", "aside", "figure", "iframe", "nav"]):
             junk.decompose()
-        paragraphs = [
-            p.get_text(strip=True) for p in node.find_all("p") if p.get_text(strip=True)
-        ]
+        paragraphs = [p.get_text(strip=True) for p in node.find_all("p") if p.get_text(strip=True)]
         return "\n\n".join(paragraphs)
 
     # ── Orchestration ────────────────────────────────────────────
@@ -221,7 +217,7 @@ class BaseNewsScraper:
             )
             return
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         for stub in stubs:
             # Skip too-old articles
             age_days = (now - stub.published_at).days
@@ -263,13 +259,14 @@ def parse_rss_pubdate(value: str) -> datetime:
     to a UTC-aware datetime. Falls back to now() on malformed dates so
     a single junky item doesn't sink the whole feed."""
     from email.utils import parsedate_to_datetime
+
     try:
         dt = parsedate_to_datetime(value)
     except (TypeError, ValueError):
-        return datetime.now(tz=timezone.utc)
+        return datetime.now(tz=UTC)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def parse_rss_feed(xml: str, source_slug: str) -> list[ArticleStub]:
@@ -288,7 +285,7 @@ def parse_rss_feed(xml: str, source_slug: str) -> list[ArticleStub]:
         title = title_node.get_text(strip=True)
         if not url or not title:
             continue
-        pub = parse_rss_pubdate(pub_node.get_text(strip=True)) if pub_node else datetime.now(tz=timezone.utc)
+        pub = parse_rss_pubdate(pub_node.get_text(strip=True)) if pub_node else datetime.now(tz=UTC)
         out.append(ArticleStub(url=url, headline=title, published_at=pub))
     if not items:
         logger.warning("news.rss_empty", source=source_slug)

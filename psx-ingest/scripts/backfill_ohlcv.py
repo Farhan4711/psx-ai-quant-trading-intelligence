@@ -45,7 +45,9 @@ async def main() -> None:
         last_dates_result = await session.execute(
             text("SELECT symbol, MAX(date) FROM ohlcv_daily GROUP BY symbol")
         )
-        last_date_by_symbol: dict[str, date] = {row[0]: row[1] for row in last_dates_result.fetchall()}
+        last_date_by_symbol: dict[str, date] = {
+            row[0]: row[1] for row in last_dates_result.fetchall()
+        }
 
     logger.info("Starting backfill", symbol_count=len(symbols), today=today.isoformat())
 

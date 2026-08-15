@@ -25,8 +25,7 @@ from __future__ import annotations
 import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
-from decimal import Decimal
+from datetime import date
 from typing import Any
 
 import structlog
@@ -34,11 +33,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from psx_ingest.config import settings
+from psx_ingest.timezone import today_pkt
 
 logger = structlog.get_logger(__name__)
 
 
-MIN_BUCKET_SAMPLES = 5   # k-anonymity floor (matches psx_api/benchmark/buckets.py)
+MIN_BUCKET_SAMPLES = 5  # k-anonymity floor (matches psx_api/benchmark/buckets.py)
 
 
 # ── Bucketing (mirrors psx_api/benchmark/buckets.py) ─────────────
@@ -118,7 +118,7 @@ async def _load_samples(session: AsyncSession) -> list[UserSample]:
         )
     ).fetchall()
 
-    today = date.today()
+    today = today_pkt()
     samples: list[UserSample] = []
     for r in rows:
         user_id = r[0]
@@ -139,9 +139,7 @@ async def _load_samples(session: AsyncSession) -> list[UserSample]:
     return samples
 
 
-async def _summarise_portfolio(
-    session: AsyncSession, user_id: str
-) -> dict[str, Any]:
+async def _summarise_portfolio(session: AsyncSession, user_id: str) -> dict[str, Any]:
     """Compact portfolio shape we need for bucketing + aggregation.
 
     All math is done in SQL where it's a hot path; this function only
@@ -179,7 +177,7 @@ async def _summarise_portfolio(
     # YTD return: ((current_value - jan1_value) / jan1_value) * 100,
     # where jan1_value is the holdings × Jan-1 close. Cheap-and-cheerful
     # approximation — ignores intra-year flows.
-    jan1 = date(date.today().year, 1, 1)
+    jan1 = date(today_pkt().year, 1, 1)
     jan1_row = (
         await session.execute(
             text(
@@ -199,9 +197,7 @@ async def _summarise_portfolio(
         )
     ).fetchone()
     jan1_value = float(jan1_row[0]) if jan1_row and jan1_row[0] is not None else 0.0
-    ytd_return = (
-        (market_value - jan1_value) / jan1_value * 100 if jan1_value > 0 else None
-    )
+    ytd_return = (market_value - jan1_value) / jan1_value * 100 if jan1_value > 0 else None
 
     # Top holdings + sector allocation.
     holdings = (
@@ -230,9 +226,7 @@ async def _summarise_portfolio(
     sector_mv: defaultdict[str, float] = defaultdict(float)
     for _, sector, mv in holdings:
         sector_mv[sector or "unknown"] += float(mv or 0.0)
-    sector_allocation = {
-        s: round(mv / market_value * 100, 2) for s, mv in sector_mv.items()
-    }
+    sector_allocation = {s: round(mv / market_value * 100, 2) for s, mv in sector_mv.items()}
 
     return {
         "market_value_pkr": market_value,
@@ -248,17 +242,12 @@ async def _summarise_portfolio(
 def _aggregate_bucket(samples: list[UserSample]) -> dict[str, Any]:
     """One bucket → one row payload (excluding key columns)."""
     ytd = [s.ytd_return_pct for s in samples if s.ytd_return_pct is not None]
-    median_ytd = (
-        round(statistics.median(ytd), 4) if ytd else None
-    )
+    median_ytd = round(statistics.median(ytd), 4) if ytd else None
 
     holdings_counter: Counter[str] = Counter()
     for s in samples:
         holdings_counter.update(s.top_holdings)
-    top10 = [
-        {"symbol": sym, "frequency": count}
-        for sym, count in holdings_counter.most_common(10)
-    ]
+    top10 = [{"symbol": sym, "frequency": count} for sym, count in holdings_counter.most_common(10)]
 
     # Median sector weight across members.
     sector_weights: defaultdict[str, list[float]] = defaultdict(list)
@@ -288,6 +277,7 @@ async def _upsert_bucket(
 ) -> None:
     archetype, age, size = key
     import json
+
     await session.execute(
         text(
             """
@@ -327,9 +317,7 @@ async def _upsert_bucket(
 
 async def run_aggregation() -> AggregateSummary:
     engine = create_async_engine(settings.database_url, echo=False)
-    session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     summary = AggregateSummary()
     try:
         async with session_factory() as session:

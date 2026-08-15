@@ -31,17 +31,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 
 @dataclass(frozen=True)
 class CorporateEvent:
     """Lightweight representation of a single corporate event."""
+
     ex_date: date
-    action_type: str          # matches models.corporate_actions VALID_ACTION_TYPES
-    amount_per_share: Decimal | None = None   # cash dividend per share (PKR)
-    ratio_numerator: int | None = None        # bonus/split: N new shares
-    ratio_denominator: int | None = None      # bonus/split: for every M held
+    action_type: str  # matches models.corporate_actions VALID_ACTION_TYPES
+    amount_per_share: Decimal | None = None  # cash dividend per share (PKR)
+    ratio_numerator: int | None = None  # bonus/split: N new shares
+    ratio_denominator: int | None = None  # bonus/split: for every M held
 
 
 @dataclass
@@ -51,7 +52,7 @@ class PriceRow:
     adjusted_close: Decimal | None = None
 
 
-_FOUR = Decimal("0.0001")   # rounding scale
+_FOUR = Decimal("0.0001")  # rounding scale
 
 
 def compute_adjusted_prices(
@@ -96,7 +97,7 @@ def compute_adjusted_prices(
     # Backward pass
     cumulative_mult = Decimal("1")
     cumulative_add = Decimal("0")
-    adj_idx = 0   # pointer into adjustments list (newest-first)
+    adj_idx = 0  # pointer into adjustments list (newest-first)
 
     result: list[PriceRow] = []
     for price_row in reversed(sorted_prices):
@@ -116,11 +117,13 @@ def compute_adjusted_prices(
         adj_close = max(adj_close, Decimal("0.01"))
         adj_close = adj_close.quantize(_FOUR, rounding=ROUND_HALF_UP)
 
-        result.append(PriceRow(
-            date=price_row.date,
-            close=price_row.close,
-            adjusted_close=adj_close,
-        ))
+        result.append(
+            PriceRow(
+                date=price_row.date,
+                close=price_row.close,
+                adjusted_close=adj_close,
+            )
+        )
 
     # Re-sort ascending before returning
     result.reverse()

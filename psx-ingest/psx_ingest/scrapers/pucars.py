@@ -34,7 +34,9 @@ logger = structlog.get_logger(__name__)
 _DPS_BASE = "https://dps.psx.com.pk"
 _ANNOUNCEMENTS_PATH = "/announcements"
 _HEADERS = {
-    "User-Agent": "PSX-AI-TradingSystem/0.1 (educational; non-commercial; contact: see LICENSING_NOTICE.md)",
+    "User-Agent": (
+        "PSX-AI-TradingSystem/0.1 (educational; non-commercial; contact: see LICENSING_NOTICE.md)"
+    ),
     "Accept": "text/html,application/xhtml+xml,application/json",
 }
 
@@ -140,6 +142,7 @@ class PucarsScraper:
         elapsed = time.monotonic() - PucarsScraper._last_request_time
         if elapsed < self._min_delay:
             import asyncio
+
             await asyncio.sleep(self._min_delay - elapsed)
 
         client = await self._get_client()
@@ -176,11 +179,10 @@ class PucarsScraper:
 
         return rows
 
-    def _parse_json_announcements(
-        self, text: str, fallback_date: date
-    ) -> list[CorporateActionRow]:
+    def _parse_json_announcements(self, text: str, fallback_date: date) -> list[CorporateActionRow]:
         """Fallback: parse JSON array if DPS returns JSON instead of HTML."""
         import json
+
         try:
             data = json.loads(text)
         except ValueError:
@@ -196,7 +198,9 @@ class PucarsScraper:
                 rows.append(row)
         return rows
 
-    def _parse_json_item(self, item: dict[str, Any], fallback_date: date) -> CorporateActionRow | None:
+    def _parse_json_item(
+        self, item: dict[str, Any], fallback_date: date
+    ) -> CorporateActionRow | None:
         symbol = item.get("symbol") or item.get("SYMBOL")
         category = item.get("category") or item.get("CATEGORY") or ""
         action_type = _map_category(category)
@@ -211,8 +215,12 @@ class PucarsScraper:
             action_type=action_type,
             announcement_date=ann_date,
             ex_date=_parse_date_flexible(item.get("ex_date") or item.get("EX_DATE") or ""),
-            record_date=_parse_date_flexible(item.get("record_date") or item.get("RECORD_DATE") or ""),
-            payment_date=_parse_date_flexible(item.get("payment_date") or item.get("PAYMENT_DATE") or ""),
+            record_date=_parse_date_flexible(
+                item.get("record_date") or item.get("RECORD_DATE") or ""
+            ),
+            payment_date=_parse_date_flexible(
+                item.get("payment_date") or item.get("PAYMENT_DATE") or ""
+            ),
             amount_per_share=_parse_decimal(str(item.get("amount") or item.get("AMOUNT") or "")),
             raw_announcement=str(item),
         )
@@ -263,7 +271,7 @@ class PucarsScraper:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
-    async def __aenter__(self) -> "PucarsScraper":
+    async def __aenter__(self) -> PucarsScraper:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -273,6 +281,7 @@ class PucarsScraper:
 # ------------------------------------------------------------------
 # Helper functions (module-level for easy unit testing)
 # ------------------------------------------------------------------
+
 
 def _map_category(text: str) -> str | None:
     """Returns the internal action_type for a PSX category string, or None if unknown."""
@@ -294,7 +303,7 @@ def _parse_date_flexible(text: str) -> date | None:
     text = text.strip()
     for fmt in ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y", "%d %b %Y", "%B %d, %Y"):
         try:
-            return datetime.strptime(text, fmt).date()
+            return datetime.strptime(text, fmt).date()  # noqa: DTZ007 — date-only, tz n/a
         except ValueError:
             continue
     return None
@@ -312,7 +321,10 @@ def _parse_decimal(text: str) -> Decimal | None:
 
 def _extract_date_by_label(text: str, label_pattern: str) -> date | None:
     """Searches `text` for a date that follows a label matching `label_pattern`."""
-    pattern = rf"{label_pattern}\s*[:\-]?\s*([\d]{{1,2}}[-/ ]{{1}}(?:\w+|\d{{2}})[-/ ]{{1}}\d{{2,4}}|\d{{4}}-\d{{2}}-\d{{2}})"
+    pattern = (
+        rf"{label_pattern}\s*[:\-]?\s*"
+        rf"([\d]{{1,2}}[-/ ]{{1}}(?:\w+|\d{{2}})[-/ ]{{1}}\d{{2,4}}|\d{{4}}-\d{{2}}-\d{{2}})"
+    )
     match = re.search(pattern, text, re.IGNORECASE)
     if match:
         return _parse_date_flexible(match.group(1))
@@ -337,7 +349,7 @@ def _extract_ratio(text: str) -> tuple[int | None, int | None]:
     "1 for 5" → (1, 5), "20 shares for every 100 held" → (20, 100).
     """
     # "N for M" or "N:M" patterns
-    match = re.search(r"(\d+)\s+(?:shares?\s+)?(?:for|:)\s+(?:every\s+)?(\d+)", text, re.IGNORECASE)
+    match = re.search(r"(\d+)\s*(?:shares?\s+)?(?:for|:)\s*(?:every\s+)?(\d+)", text, re.IGNORECASE)
     if match:
         return int(match.group(1)), int(match.group(2))
 

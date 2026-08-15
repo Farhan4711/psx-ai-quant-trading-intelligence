@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +16,7 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.get("/heatmap")
-async def heatmap(
-    db: DbDep, sector: str | None = None
-) -> list[dict]:
+async def heatmap(db: DbDep, sector: str | None = None) -> list[dict[str, Any]]:
     return await SectorService(db).heatmap(sector)
 
 
@@ -27,7 +25,7 @@ async def compare(
     sector_name: str,
     db: DbDep,
     symbols: Annotated[str, Query(description="Comma-separated symbols, 2–4")],
-) -> dict:
+) -> dict[str, Any]:
     parts = [s.strip() for s in symbols.split(",") if s.strip()]
     if not (2 <= len(parts) <= 4):
         raise HTTPException(

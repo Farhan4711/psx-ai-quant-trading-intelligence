@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from datetime import date
 from math import exp
 
-
 # Half-life: 5 days. The exp decay below uses τ=5 directly (not "half"),
 # so a 5-day-old headline is weighted ~37% of a same-day headline.
 _DECAY_TAU_DAYS = 5
@@ -29,13 +28,13 @@ _SATURATION = 9.0
 
 @dataclass(frozen=True)
 class PulseInput:
-    polarity: float        # in [-1, +1]
+    polarity: float  # in [-1, +1]
     published_on: date
 
 
 @dataclass(frozen=True)
 class PulseScore:
-    score: float           # in [-100, +100]
+    score: float  # in [-100, +100]
     article_count: int
     weighted_count: float
 

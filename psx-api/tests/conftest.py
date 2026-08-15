@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -26,7 +26,7 @@ def _make_security(**kwargs: object) -> Security:
         "listed_at": None,
         "delisted_at": None,
         "is_active": True,
-        "updated_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+        "updated_at": datetime(2024, 1, 1, tzinfo=UTC),
     }
     defaults.update(kwargs)
     obj = MagicMock(spec=Security)
@@ -79,7 +79,7 @@ def sample_security_response() -> SecurityResponse:
         listed_at=None,
         delisted_at=None,
         is_active=True,
-        updated_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        updated_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
 
 

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +16,7 @@ class NewsService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def articles_for_symbol(
-        self, symbol: str, *, limit: int = 20
-    ) -> list[dict]:
+    async def articles_for_symbol(self, symbol: str, *, limit: int = 20) -> list[dict[str, Any]]:
         rows = (
             await self._db.execute(
                 select(
@@ -54,11 +52,9 @@ class NewsService:
             for r in rows
         ]
 
-    async def pulse(self, symbol: str, *, today: date | None = None) -> dict:
-        today = today or datetime.now(timezone.utc).date()
-        cutoff_dt = datetime.combine(
-            today - timedelta(days=14), datetime.min.time(), tzinfo=timezone.utc
-        )
+    async def pulse(self, symbol: str, *, today: date | None = None) -> dict[str, Any]:
+        today = today or datetime.now(UTC).date()
+        cutoff_dt = datetime.combine(today - timedelta(days=14), datetime.min.time(), tzinfo=UTC)
 
         rows = (
             await self._db.execute(
@@ -71,9 +67,7 @@ class NewsService:
                     ArticleSentiment.polarity,
                     ArticleSentiment.event_type,
                 )
-                .join(
-                    ArticleSentiment, ArticleSentiment.article_id == NewsArticle.id
-                )
+                .join(ArticleSentiment, ArticleSentiment.article_id == NewsArticle.id)
                 .where(
                     ArticleSentiment.symbol == symbol.upper(),
                     NewsArticle.published_at >= cutoff_dt,
@@ -97,16 +91,12 @@ class NewsService:
         scored_articles = [
             {
                 "row": r,
-                "weight": (
-                    abs(float(r[5])) if r[5] is not None else 0.0
-                ),
+                "weight": (abs(float(r[5])) if r[5] is not None else 0.0),
                 "recency_days": max(0, (today - r[4].date()).days),
             }
             for r in rows
         ]
-        scored_articles.sort(
-            key=lambda a: a["weight"] - a["recency_days"] * 0.05, reverse=True
-        )
+        scored_articles.sort(key=lambda a: a["weight"] - a["recency_days"] * 0.05, reverse=True)
         top = scored_articles[:3]
         top_articles = [
             {

@@ -33,8 +33,8 @@ class CheckoutContext:
     customer_email: str
     customer_name: str | None
     customer_phone: str | None
-    return_url: str       # frontend page user lands on after gateway
-    callback_url: str     # backend webhook the gateway POSTs to
+    return_url: str  # frontend page user lands on after gateway
+    callback_url: str  # backend webhook the gateway POSTs to
     expires_at_unix: int  # epoch seconds
 
 

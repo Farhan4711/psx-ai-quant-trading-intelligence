@@ -17,17 +17,16 @@ Archetype = function of (tolerance, horizon, knowledge). See `archetype()`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
-
+from typing import Any, Literal
 
 Axis = Literal["risk_tolerance", "time_horizon", "knowledge"]
 
 
 @dataclass(frozen=True)
 class Option:
-    value: str           # stable ID, persisted in answers
-    label: str           # user-facing
-    weight: int          # 1–5; for knowledge questions, only the correct answer is 5
+    value: str  # stable ID, persisted in answers
+    label: str  # user-facing
+    weight: int  # 1–5; for knowledge questions, only the correct answer is 5
 
 
 @dataclass(frozen=True)
@@ -101,7 +100,6 @@ QUESTIONS: tuple[Question, ...] = (
             Option("excited", "Excited — time to buy", 5),
         ),
     ),
-
     # ── Time horizon (3) ──────────────────────────────────────────
     Question(
         id="th1",
@@ -135,7 +133,6 @@ QUESTIONS: tuple[Question, ...] = (
             Option("flexible", "No hard deadline — long-term wealth building", 5),
         ),
     ),
-
     # ── Knowledge (4) ─────────────────────────────────────────────
     # Each correct answer = 5; everything else = 1.
     Question(
@@ -165,7 +162,9 @@ QUESTIONS: tuple[Question, ...] = (
         axis="knowledge",
         prompt="If a stock's P/E ratio is much higher than its sector average, that usually means…",
         options=(
-            Option("right", "The market is pricing in higher future growth (or it's overvalued)", 5),
+            Option(
+                "right", "The market is pricing in higher future growth (or it's overvalued)", 5
+            ),
             Option("wrong1", "It's safer than the rest of the sector", 1),
             Option("wrong2", "It pays a higher dividend", 1),
             Option("dontknow", "Not sure", 1),
@@ -191,7 +190,7 @@ QUESTIONS: tuple[Question, ...] = (
 _BY_ID = {q.id: q for q in QUESTIONS}
 
 
-class InvalidAnswers(ValueError):
+class InvalidAnswersError(ValueError):
     """Raised when the answer dict is missing questions or has unknown options."""
 
 
@@ -204,7 +203,7 @@ def score(answers: dict[str, str]) -> dict[str, int]:
     if set(answers.keys()) != set(_BY_ID.keys()):
         missing = set(_BY_ID.keys()) - set(answers.keys())
         extra = set(answers.keys()) - set(_BY_ID.keys())
-        raise InvalidAnswers(
+        raise InvalidAnswersError(
             f"Answer set mismatch — missing: {sorted(missing)}, unknown: {sorted(extra)}"
         )
 
@@ -213,13 +212,12 @@ def score(answers: dict[str, str]) -> dict[str, int]:
         q = _BY_ID[qid]
         opt = next((o for o in q.options if o.value == value), None)
         if opt is None:
-            raise InvalidAnswers(f"Unknown option '{value}' for question '{qid}'")
+            raise InvalidAnswersError(f"Unknown option '{value}' for question '{qid}'")
         raw[q.axis].append(opt.weight)
 
     # Average → round to nearest int → clamp 1..5
     return {
-        axis: max(1, min(5, round(sum(weights) / len(weights))))
-        for axis, weights in raw.items()
+        axis: max(1, min(5, round(sum(weights) / len(weights)))) for axis, weights in raw.items()
     }
 
 
@@ -296,7 +294,7 @@ def archetype(scores: dict[str, int]) -> str:
     return ARCHETYPES[base]
 
 
-def evaluate(answers: dict[str, str]) -> dict:
+def evaluate(answers: dict[str, str]) -> dict[str, Any]:
     """One-shot: answers → axis scores + archetype + profile description."""
     sc = score(answers)
     arch_key = archetype(sc)

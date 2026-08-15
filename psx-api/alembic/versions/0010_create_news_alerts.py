@@ -15,17 +15,17 @@ Phase 3A + 3B foundation:
                        trigger for that day.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision: str = "0010"
-down_revision: Union[str, None] = "0009"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0009"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -79,9 +79,7 @@ def upgrade() -> None:
     # ── company_aliases ───────────────────────────────────────────
     op.create_table(
         "company_aliases",
-        sa.Column(
-            "id", sa.Integer(), autoincrement=True, nullable=False
-        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "symbol",
             sa.String(20),
@@ -89,9 +87,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("alias", sa.String(255), nullable=False),
-        sa.Column(
-            "is_primary", sa.Boolean(), nullable=False, server_default=sa.text("false")
-        ),
+        sa.Column("is_primary", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("symbol", "alias", name="uq_company_aliases_symbol_alias"),
     )
@@ -127,9 +123,7 @@ def upgrade() -> None:
             name="ck_article_sentiment_event_type",
         ),
     )
-    op.create_index(
-        "ix_article_sentiment_symbol", "article_sentiment", ["symbol"]
-    )
+    op.create_index("ix_article_sentiment_symbol", "article_sentiment", ["symbol"])
 
     # ── suspicious_days ───────────────────────────────────────────
     op.create_table(
@@ -148,11 +142,13 @@ def upgrade() -> None:
         ),
         sa.Column("alert_date", sa.Date(), nullable=False),
         sa.Column("alert_type", sa.String(30), nullable=False),  # pump | dump
-        sa.Column("severity", sa.String(10), nullable=False),    # low | medium | high
+        sa.Column("severity", sa.String(10), nullable=False),  # low | medium | high
         sa.Column("vol_spike", sa.Numeric(10, 2), nullable=False),
         sa.Column("price_change_pct", sa.Numeric(10, 2), nullable=False),
         sa.Column("anomaly_score", sa.Numeric(10, 4), nullable=True),
-        sa.Column("has_news_context", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "has_news_context", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("explanation", sa.Text(), nullable=False),
         sa.Column(
             "created_at",
@@ -162,9 +158,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("symbol", "alert_date", name="uq_suspicious_days_symbol_date"),
-        sa.CheckConstraint(
-            "alert_type IN ('pump','dump')", name="ck_suspicious_days_type"
-        ),
+        sa.CheckConstraint("alert_type IN ('pump','dump')", name="ck_suspicious_days_type"),
         sa.CheckConstraint(
             "severity IN ('low','medium','high')", name="ck_suspicious_days_severity"
         ),

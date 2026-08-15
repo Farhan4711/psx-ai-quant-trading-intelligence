@@ -11,7 +11,6 @@ import pytest
 
 from psx_api.services.notification_service import VALID_KINDS
 
-
 # ── R-001: notification kind whitelist ─────────────────────────────────
 #
 # The Phase 4 audit (migration 0011) created the `notifications` table
@@ -29,9 +28,7 @@ class TestNotificationKindWhitelist:
     def test_valid_kinds_constant_matches_migration(self) -> None:
         # If migration 0012 ever changes the whitelist, this test breaks
         # and the constant must be updated alongside.
-        assert VALID_KINDS == frozenset(
-            {"kmi_delisting", "pump_dump", "goal_milestone", "system"}
-        )
+        assert VALID_KINDS == frozenset({"kmi_delisting", "pump_dump", "goal_milestone", "system"})
 
     def test_unknown_kind_is_a_value_error_not_db_error(self) -> None:
         # Importable without a DB connection — the validation lives in

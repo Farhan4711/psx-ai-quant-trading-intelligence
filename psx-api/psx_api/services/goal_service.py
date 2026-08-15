@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +15,7 @@ from psx_api.schemas.goals import (
     GoalCreate,
     GoalUpdate,
 )
+from psx_api.timezone import today_pkt
 
 
 class GoalError(Exception):
@@ -82,7 +81,7 @@ class GoalService:
             current_amount_pkr=goal.current_amount_pkr,
             monthly_contribution_pkr=goal.monthly_contribution_pkr,
             target_date=goal.target_date,
-            today=date.today(),
+            today=today_pkt(),
         )
         # Allocation falls back to balanced when archetype is missing
         archetype = user.risk_archetype or "balanced_builder"

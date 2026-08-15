@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 
+from psx_api.backtest.engine import Bar
 from psx_api.benchmark.buckets import (
     age_bucket,
     archetype_bucket,
@@ -22,12 +23,10 @@ from psx_api.purification.calculator import (
     compute_report,
 )
 from psx_api.strategy_builder.parse import (
-    InvalidStrategy,
+    InvalidStrategyError,
     build_strategy,
     validate,
 )
-from psx_api.backtest.engine import Bar
-
 
 # ── Buckets ─────────────────────────────────────────────────────────────
 
@@ -133,7 +132,7 @@ class TestStrategyParser:
         assert callable(strategy)
 
     def test_missing_entry_raises(self) -> None:
-        with pytest.raises(InvalidStrategy):
+        with pytest.raises(InvalidStrategyError):
             validate({})
 
     def test_unknown_indicator_raises(self) -> None:
@@ -144,7 +143,7 @@ class TestStrategyParser:
                 "right": {"kind": "constant", "value": 30},
             }
         }
-        with pytest.raises(InvalidStrategy):
+        with pytest.raises(InvalidStrategyError):
             validate(rules)
 
     def test_unknown_operator_raises(self) -> None:
@@ -155,7 +154,7 @@ class TestStrategyParser:
                 "right": {"kind": "constant", "value": 2},
             }
         }
-        with pytest.raises(InvalidStrategy):
+        with pytest.raises(InvalidStrategyError):
             validate(rules)
 
     def test_holding_days_gt_only_in_exit(self) -> None:
@@ -210,12 +209,12 @@ class TestLessons:
         for lesson in CURRICULUM:
             assert len(lesson.quiz) >= 3
             for q in lesson.quiz:
-                assert any(o.correct for o in q.options), (
-                    f"Question '{q.question}' has no correct option"
-                )
+                assert any(
+                    o.correct for o in q.options
+                ), f"Question '{q.question}' has no correct option"
 
     def test_each_lesson_has_unique_slug(self) -> None:
-        slugs = [l.slug for l in CURRICULUM]
+        slugs = [lesson.slug for lesson in CURRICULUM]
         assert len(slugs) == len(set(slugs))
 
     def test_grade_perfect_score(self) -> None:

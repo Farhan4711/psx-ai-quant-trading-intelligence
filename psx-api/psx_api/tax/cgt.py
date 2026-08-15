@@ -21,21 +21,20 @@ Design notes:
 - A loss yields zero CGT (SECP allows offsetting against same-year gains in
   the user's annual return — that's a reporting concern, not transaction-time).
 - Bracket lookup is exact match by date range, filer status, and holding
-  bucket. If no bracket matches, raises `NoApplicableTaxRule`.
+  bucket. If no bracket matches, raises `NoApplicableTaxRuleError`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Sequence
-
 
 # ── Errors ──────────────────────────────────────────────────────────────
 
 
-class NoApplicableTaxRule(Exception):
+class NoApplicableTaxRuleError(Exception):
     """Raised when no tax_rules row matches the given (date, filer, holding)."""
 
 
@@ -129,17 +128,16 @@ def find_bracket(
 ) -> TaxBracket:
     """
     Return the unique bracket applying to (sell_date, is_filer, holding_days).
-    Raises NoApplicableTaxRule if no bracket matches.
+    Raises NoApplicableTaxRuleError if no bracket matches.
 
     If multiple brackets match (data error in tax_rules), the most specific —
     narrowest holding range, narrowest date range — wins.
     """
     candidates = [
-        b for b in brackets
-        if _bracket_matches(b, sell_date, is_filer, holding_period_days)
+        b for b in brackets if _bracket_matches(b, sell_date, is_filer, holding_period_days)
     ]
     if not candidates:
-        raise NoApplicableTaxRule(
+        raise NoApplicableTaxRuleError(
             f"No CGT bracket for sell_date={sell_date} is_filer={is_filer} "
             f"holding_days={holding_period_days}"
         )
@@ -147,14 +145,10 @@ def find_bracket(
     # Most-specific wins: narrowest holding range, then narrowest date range.
     def _specificity(b: TaxBracket) -> tuple[int, int]:
         holding_span = (
-            (b.max_holding_days - b.min_holding_days)
-            if b.max_holding_days is not None
-            else 10**9
+            (b.max_holding_days - b.min_holding_days) if b.max_holding_days is not None else 10**9
         )
         date_span = (
-            (b.effective_to - b.effective_from).days
-            if b.effective_to is not None
-            else 10**9
+            (b.effective_to - b.effective_from).days if b.effective_to is not None else 10**9
         )
         return (holding_span, date_span)
 

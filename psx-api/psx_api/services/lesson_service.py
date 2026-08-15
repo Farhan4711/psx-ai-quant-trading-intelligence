@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -27,9 +28,7 @@ class LessonService:
         count of lessons inserted (existing ones are left untouched —
         admins can edit content directly in DB later).
         """
-        existing = (
-            await self._db.execute(select(Lesson.slug))
-        ).scalars().all()
+        existing = (await self._db.execute(select(Lesson.slug))).scalars().all()
         existing_set = set(existing)
         inserted = 0
         for i, lc in enumerate(CURRICULUM):
@@ -50,7 +49,7 @@ class LessonService:
         await self._db.flush()
         return inserted
 
-    async def list_with_progress(self, user_id: str) -> list[dict]:
+    async def list_with_progress(self, user_id: str) -> list[dict[str, Any]]:
         rows = (
             await self._db.execute(
                 select(
@@ -85,7 +84,7 @@ class LessonService:
             for r in rows
         ]
 
-    async def get_with_progress(self, user_id: str, slug: str) -> dict | None:
+    async def get_with_progress(self, user_id: str, slug: str) -> dict[str, Any] | None:
         lesson = (
             await self._db.execute(select(Lesson).where(Lesson.slug == slug))
         ).scalar_one_or_none()
@@ -101,7 +100,7 @@ class LessonService:
                 )
             )
         ).scalar_one_or_none()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if progress is None:
             progress = UserLessonProgress(
                 user_id=user_id,
@@ -138,14 +137,14 @@ class LessonService:
             "quiz": scrubbed_quiz,
             "progress": {
                 "started_at": progress.started_at.isoformat() if progress.started_at else None,
-                "completed_at": progress.completed_at.isoformat() if progress.completed_at else None,
+                "completed_at": progress.completed_at.isoformat()
+                if progress.completed_at
+                else None,
                 "quiz_score": progress.quiz_score,
             },
         }
 
-    async def submit_quiz(
-        self, user_id: str, slug: str, answers: list[int]
-    ) -> dict:
+    async def submit_quiz(self, user_id: str, slug: str, answers: list[int]) -> dict[str, Any]:
         lesson = (
             await self._db.execute(select(Lesson).where(Lesson.slug == slug))
         ).scalar_one_or_none()
@@ -163,7 +162,7 @@ class LessonService:
                 )
             )
         ).scalar_one_or_none()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if progress is None:
             progress = UserLessonProgress(
                 user_id=user_id,

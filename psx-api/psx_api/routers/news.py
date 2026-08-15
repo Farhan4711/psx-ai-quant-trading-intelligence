@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,7 @@ async def get_pulse(symbol: str, db: DbDep) -> NewsPulseResponse:
 
 
 @router.get("/securities/{symbol}/news")
-async def get_articles(symbol: str, db: DbDep, limit: int = 20) -> list[dict]:
+async def get_articles(symbol: str, db: DbDep, limit: int = 20) -> list[dict[str, Any]]:
     if not 1 <= limit <= 100:
         raise HTTPException(status_code=400, detail="limit must be 1..100")
     service = NewsService(db)

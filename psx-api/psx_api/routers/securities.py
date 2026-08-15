@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from redis.asyncio import Redis
@@ -24,7 +24,7 @@ from psx_api.services.securities_service import SecuritiesService
 router = APIRouter(prefix="/api/v1", tags=["securities"])
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
-RedisDep = Annotated[Redis, Depends(get_redis)]  # type: ignore[type-arg]
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 def _service(db: DbDep, redis: RedisDep) -> SecuritiesService:
@@ -58,7 +58,9 @@ async def list_securities(
 async def get_security(symbol: str, service: ServiceDep) -> SecurityResponse:
     security = await service.get_security(symbol)
     if not security:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found."
+        )
     return security
 
 
@@ -72,15 +74,21 @@ async def get_ohlcv(
     adjusted: bool = True,
 ) -> OhlcvListResponse:
     if not await service.get_security(symbol):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found.")
-    return await service.get_ohlcv(symbol, date_from=date_from, date_to=date_to, limit=limit, adjusted=adjusted)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found."
+        )
+    return await service.get_ohlcv(
+        symbol, date_from=date_from, date_to=date_to, limit=limit, adjusted=adjusted
+    )
 
 
 @router.get("/securities/{symbol}/fundamentals", response_model=FundamentalsResponse)
 async def get_fundamentals(symbol: str, service: ServiceDep) -> FundamentalsResponse:
     fundamentals = await service.get_fundamentals(symbol)
     if not fundamentals:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found."
+        )
     return fundamentals
 
 
@@ -91,7 +99,9 @@ async def get_announcements(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> AnnouncementsListResponse:
     if not await service.get_security(symbol):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Security '{symbol.upper()}' not found."
+        )
     return await service.get_announcements(symbol, limit=limit)
 
 
@@ -122,7 +132,7 @@ async def get_indices(service: ServiceDep) -> list[IndexPerformance]:
 
 
 @router.get("/indicators/list")
-async def list_supported_indicators() -> list[dict]:
+async def list_supported_indicators() -> list[dict[str, Any]]:
     return SUPPORTED
 
 
@@ -132,7 +142,7 @@ async def compute_indicator(
     indicator: str,
     db: DbDep,
     redis: RedisDep,
-) -> dict:
+) -> dict[str, Any]:
     valid = {s["key"] for s in SUPPORTED}
     if indicator not in valid:
         raise HTTPException(

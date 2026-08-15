@@ -5,24 +5,26 @@ Revises: 0010
 Create Date: 2026-05-08
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision: str = "0011"
-down_revision: Union[str, None] = "0010"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0010"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     # ── Step 59: opt-in sharing flag + age (for bucketing) ────────
     op.add_column(
         "users",
-        sa.Column("share_anonymously", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "share_anonymously", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
     )
     op.add_column("users", sa.Column("date_of_birth", sa.Date(), nullable=True))
 
@@ -36,8 +38,18 @@ def upgrade() -> None:
         sa.Column("size_bucket", sa.String(20), nullable=False),
         sa.Column("sample_count", sa.Integer(), nullable=False),
         sa.Column("median_ytd_return_pct", sa.Numeric(10, 4), nullable=True),
-        sa.Column("top_holdings", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("sector_allocation", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "top_holdings",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
+        sa.Column(
+            "sector_allocation",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
         sa.Column(
             "computed_at",
             sa.TIMESTAMP(timezone=True),
@@ -45,9 +57,7 @@ def upgrade() -> None:
             server_default=sa.text("NOW()"),
         ),
         sa.PrimaryKeyConstraint("archetype", "age_bucket", "size_bucket"),
-        sa.CheckConstraint(
-            "sample_count >= 0", name="ck_peer_aggregates_sample_count"
-        ),
+        sa.CheckConstraint("sample_count >= 0", name="ck_peer_aggregates_sample_count"),
     )
 
     # ── Steps 62-63: user-defined strategies + marketplace ────────
@@ -170,7 +180,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
-            "user_id", "fiscal_year", "symbol",
+            "user_id",
+            "fiscal_year",
+            "symbol",
             name="uq_purification_records_user_year_symbol",
         ),
     )

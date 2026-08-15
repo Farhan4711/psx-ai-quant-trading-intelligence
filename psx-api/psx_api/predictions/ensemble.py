@@ -34,6 +34,7 @@ import logging
 from dataclasses import dataclass
 from math import exp
 from statistics import variance
+from typing import Any
 
 import httpx
 
@@ -43,21 +44,21 @@ logger = logging.getLogger(__name__)
 
 
 MODEL_VERSION = "heuristic-v0.1.0"
-REMOTE_TIMEOUT_SECONDS = 1.5    # tight: heuristic fallback if inference is slow
+REMOTE_TIMEOUT_SECONDS = 1.5  # tight: heuristic fallback if inference is slow
 
 
 @dataclass(frozen=True)
 class FeatureContribution:
     name: str
     value: float | None
-    contribution: str           # "positive" | "negative" | "neutral"
+    contribution: str  # "positive" | "negative" | "neutral"
 
 
 @dataclass(frozen=True)
 class Prediction:
     probability_up: float
-    confidence: str             # "high" | "medium" | "low"
-    confidence_score: float     # 0..1, raw
+    confidence: str  # "high" | "medium" | "low"
+    confidence_score: float  # 0..1, raw
     sub_model_probabilities: dict[str, float]
     top_features: list[FeatureContribution]
     model_version: str
@@ -80,7 +81,7 @@ def _sigmoid(x: float) -> float:
     return z / (1 + z)
 
 
-def _model_lstm_proxy(f: dict) -> float:
+def _model_lstm_proxy(f: dict[str, Any]) -> float:
     """Momentum-heavy: weights recent log returns + Williams %R + RSI."""
     score = 0.0
     if f.get("log_return_5d") is not None:
@@ -95,14 +96,14 @@ def _model_lstm_proxy(f: dict) -> float:
     return _sigmoid(score)
 
 
-def _model_xgb_proxy(f: dict) -> float:
+def _model_xgb_proxy(f: dict[str, Any]) -> float:
     """Mean-reversion + Bollinger feature-mix (matches XGBoost's typical bias)."""
     score = 0.0
     if f.get("bollinger_pct_b") is not None:
         # %B near 0 → near lower band → mean-revert long bias
         score += (0.5 - f["bollinger_pct_b"]) * 0.8
     if f.get("disparity_5") is not None:
-        score -= f["disparity_5"] * 4   # stretched above SMA → pullback
+        score -= f["disparity_5"] * 4  # stretched above SMA → pullback
     if f.get("macd_histogram") is not None:
         score += f["macd_histogram"] * 0.05
     if f.get("volume_z_20") is not None and f.get("log_return_1d") is not None:
@@ -111,7 +112,7 @@ def _model_xgb_proxy(f: dict) -> float:
     return _sigmoid(score)
 
 
-def _model_rf_proxy(f: dict) -> float:
+def _model_rf_proxy(f: dict[str, Any]) -> float:
     """Trend-following: SMA disparity + KSE-100 context."""
     score = 0.0
     if f.get("disparity_10") is not None:
@@ -164,10 +165,10 @@ _FEATURE_DIRECTION: dict[str, int] = {
     "log_return_5d": 1,
     "log_return_10d": 1,
     "momentum_10": 1,
-    "disparity_5": -1,           # stretched above SMA → pullback risk
-    "disparity_10": 1,            # uptrend confirmation at 10-day scale
-    "rsi_14": -1,                 # >70 overbought → bearish
-    "williams_r_14": -1,          # closer to 0 = more overbought
+    "disparity_5": -1,  # stretched above SMA → pullback risk
+    "disparity_10": 1,  # uptrend confirmation at 10-day scale
+    "rsi_14": -1,  # >70 overbought → bearish
+    "williams_r_14": -1,  # closer to 0 = more overbought
     "macd_histogram": 1,
     "bollinger_pct_b": -1,
     "kse100_return_pct": 1,
@@ -175,7 +176,7 @@ _FEATURE_DIRECTION: dict[str, int] = {
 }
 
 
-def _top_contributions(features: dict, probability: float) -> list[FeatureContribution]:
+def _top_contributions(features: dict[str, Any], probability: float) -> list[FeatureContribution]:
     """
     Pick the 3 features with the largest absolute "directional impact"
     relative to a neutral baseline — magnitude × direction × baseline.
@@ -222,9 +223,9 @@ def _top_contributions(features: dict, probability: float) -> list[FeatureContri
 
 def _try_remote_predict(
     symbol: str,
-    features: dict,
+    features: dict[str, Any],
     *,
-    window: list[dict] | None = None,
+    window: list[dict[str, Any]] | None = None,
     horizon_days: int = 1,
 ) -> Prediction | None:
     """
@@ -239,7 +240,7 @@ def _try_remote_predict(
     url = (settings.inference_service_url or "").rstrip("/")
     if not url:
         return None
-    payload: dict = {"symbol": symbol, "features": features}
+    payload: dict[str, Any] = {"symbol": symbol, "features": features}
     if window:
         payload["window"] = window
     try:
@@ -282,9 +283,7 @@ def _try_remote_predict(
     confidence = str(data.get("confidence", "medium"))
     # Re-derive a 0..1 confidence_score from the variance of sub-probs
     # to keep the existing UI's gauge working.
-    _, score = (
-        _confidence(list(probs.values())) if probs else ("low", 0.0)
-    )
+    _, score = _confidence(list(probs.values())) if probs else ("low", 0.0)
     top = _top_contributions(features, prob_up)
     return Prediction(
         probability_up=prob_up,
@@ -301,10 +300,10 @@ def _try_remote_predict(
 
 
 def predict(
-    features: dict,
+    features: dict[str, Any],
     *,
     symbol: str | None = None,
-    window: list[dict] | None = None,
+    window: list[dict[str, Any]] | None = None,
     horizon_days: int = 1,
 ) -> Prediction:
     """One-shot: features → ensembled probability + confidence + top features.
@@ -315,9 +314,7 @@ def predict(
     callers never need branchy logic.
     """
     if symbol:
-        remote = _try_remote_predict(
-            symbol, features, window=window, horizon_days=horizon_days
-        )
+        remote = _try_remote_predict(symbol, features, window=window, horizon_days=horizon_days)
         if remote is not None:
             return remote
 

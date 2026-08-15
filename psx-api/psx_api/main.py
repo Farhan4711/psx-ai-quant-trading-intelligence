@@ -37,9 +37,7 @@ def _configure_logging() -> None:
         wrapper_class=structlog.make_filtering_bound_logger(
             # `NAME_TO_LEVEL` is the public API; `_NAME_TO_LEVEL` is private and
             # was removed in modern structlog versions. Default to INFO=20.
-            getattr(structlog.stdlib, "NAME_TO_LEVEL", {}).get(
-                settings.log_level.upper(), 20
-            )
+            getattr(structlog.stdlib, "NAME_TO_LEVEL", {}).get(settings.log_level.upper(), 20)
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
@@ -51,6 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("psx-api starting", environment=settings.environment)
     yield
     from psx_api.redis_client import close_redis
+
     await close_redis()
     logger.info("psx-api shutting down")
 
@@ -94,6 +93,7 @@ def create_app() -> FastAPI:
         tax_simulator,
         watchlist,
     )
+
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(securities.router)

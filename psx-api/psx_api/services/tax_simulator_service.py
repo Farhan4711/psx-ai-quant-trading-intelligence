@@ -15,16 +15,18 @@ status, sums the two results.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from psx_api.models.portfolios import Portfolio, Transaction
 from psx_api.services.tax_rule_repository import TaxRuleRepository
-from psx_api.tax.cgt import BuyLot, NoApplicableTaxRule, match_fifo
-
+from psx_api.tax.cgt import BuyLot, NoApplicableTaxRuleError, TaxBracket, match_fifo
+from psx_api.timezone import today_pkt
 
 _TWO = Decimal("0.01")
 
@@ -40,15 +42,15 @@ class TaxSimulatorService:
         *,
         date_from: date | None = None,
         date_to: date | None = None,
-    ) -> dict:
-        date_to = date_to or date.today()
+    ) -> dict[str, Any]:
+        date_to = date_to or today_pkt()
         date_from = date_from or (date_to - timedelta(days=365))
 
         portfolios = (
-            await self._db.execute(
-                select(Portfolio).where(Portfolio.user_id == user_id)
-            )
-        ).scalars().all()
+            (await self._db.execute(select(Portfolio).where(Portfolio.user_id == user_id)))
+            .scalars()
+            .all()
+        )
 
         if not portfolios:
             return self._empty_result(date_from, date_to)
@@ -115,7 +117,7 @@ class TaxSimulatorService:
     async def _simulate_portfolio(
         self,
         portfolio: Portfolio,
-        brackets,
+        brackets: Sequence[TaxBracket],
         *,
         date_from: date,
         date_to: date,
@@ -126,15 +128,19 @@ class TaxSimulatorService:
         # Pull every transaction for this portfolio (need the full history
         # to match buys against sells, even buys outside the window).
         txns = (
-            await self._db.execute(
-                select(Transaction)
-                .where(Transaction.portfolio_id == portfolio.id)
-                .order_by(Transaction.transaction_date, Transaction.created_at)
+            (
+                await self._db.execute(
+                    select(Transaction)
+                    .where(Transaction.portfolio_id == portfolio.id)
+                    .order_by(Transaction.transaction_date, Transaction.created_at)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         # Lot tracking per symbol
-        lots_by_symbol: dict[str, list[dict]] = {}
+        lots_by_symbol: dict[str, list[dict[str, Any]]] = {}
         cgt_filer = Decimal("0")
         cgt_nonfiler = Decimal("0")
         gross_gain = Decimal("0")
@@ -185,7 +191,7 @@ class TaxSimulatorService:
                         is_filer=False,
                         brackets=brackets,
                     )
-                except NoApplicableTaxRule:
+                except NoApplicableTaxRuleError:
                     continue
 
                 # Within window: count toward simulator output
@@ -211,7 +217,7 @@ class TaxSimulatorService:
         return cgt_filer, cgt_nonfiler, gross_gain, brokerage, fed, cvt, sell_count
 
     @staticmethod
-    def _empty_result(date_from: date, date_to: date) -> dict:
+    def _empty_result(date_from: date, date_to: date) -> dict[str, Any]:
         return {
             "date_from": date_from.isoformat(),
             "date_to": date_to.isoformat(),

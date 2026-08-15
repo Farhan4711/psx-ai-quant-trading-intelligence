@@ -33,7 +33,6 @@ from psx_api.services.payments.base import (
 )
 from psx_api.services.payments.jazzcash import _local_sandbox_url
 
-
 _LIVE_URL = "https://ipg.meezanbank.com/IPGGenericIntegration/Index.jsf"
 _SANDBOX_URL = "https://ipgtest.meezanbank.com/IPGGenericIntegration/Index.jsf"
 
@@ -51,7 +50,10 @@ class MeezanIPGGateway(PaymentGateway):
     def create_intent(self, ctx: CheckoutContext) -> CheckoutResult:
         amount = f"{ctx.amount_pkr:.2f}"
         # Meezan request hash spec: SHA256(secret|merchant|ref|amount|PKR|return_url)
-        hash_input = f"{self._secret}|{self._merchant_id}|{ctx.merchant_txn_ref}|{amount}|PKR|{ctx.callback_url}"
+        hash_input = (
+            f"{self._secret}|{self._merchant_id}|{ctx.merchant_txn_ref}|"
+            f"{amount}|PKR|{ctx.callback_url}"
+        )
         request_hash = hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
 
         payload: dict[str, str] = {

@@ -15,6 +15,7 @@ DB-only flow once content gets long.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -33,16 +34,14 @@ class QuizQuestion:
 class LessonContent:
     slug: str
     title: str
-    category: str       # "basics" | "analysis" | "tax" | "shariah" | "discipline"
-    difficulty: int     # 1..3
+    category: str  # "basics" | "analysis" | "tax" | "shariah" | "discipline"
+    difficulty: int  # 1..3
     body_md: str
     quiz: list[QuizQuestion]
 
 
 def _q(q: str, *opts: tuple[str, bool]) -> QuizQuestion:
-    return QuizQuestion(
-        question=q, options=[QuizOption(text=t, correct=c) for t, c in opts]
-    )
+    return QuizQuestion(question=q, options=[QuizOption(text=t, correct=c) for t, c in opts])
 
 
 CURRICULUM: list[LessonContent] = [
@@ -389,7 +388,11 @@ CURRICULUM: list[LessonContent] = [
             _q(
                 "Why does small position sizing matter?",
                 ("Brokers reward it", False),
-                ("It keeps individual losses survivable so you stay in the game long enough to learn", True),
+                (
+                    "It keeps individual losses survivable so you stay in the "
+                    "game long enough to learn",
+                    True,
+                ),
                 ("It minimises taxes", False),
                 ("It's required by SECP", False),
             ),
@@ -417,9 +420,14 @@ CURRICULUM: list[LessonContent] = [
         ),
         quiz=[
             _q(
-                "Bonus shares — does receiving them increase the value of your holding immediately?",
+                "Bonus shares — does receiving them increase the value of "
+                "your holding immediately?",
                 ("Yes, free shares = free money", False),
-                ("No — share count goes up but price drops proportionally; total value unchanged on day 1", True),
+                (
+                    "No — share count goes up but price drops proportionally; "
+                    "total value unchanged on day 1",
+                    True,
+                ),
                 ("Only for filers", False),
                 ("Only if you sell within 24 hours", False),
             ),
@@ -485,7 +493,7 @@ CURRICULUM: list[LessonContent] = [
 ]
 
 
-def quiz_to_jsonable(quiz: list[QuizQuestion]) -> list[dict]:
+def quiz_to_jsonable(quiz: list[QuizQuestion]) -> list[dict[str, Any]]:
     """Convert quiz objects to the JSON shape stored in lessons.quiz."""
     return [
         {
@@ -496,16 +504,14 @@ def quiz_to_jsonable(quiz: list[QuizQuestion]) -> list[dict]:
     ]
 
 
-def grade_attempt(
-    quiz: list[dict], answer_indices: list[int]
-) -> int:
+def grade_attempt(quiz: list[dict[str, Any]], answer_indices: list[int]) -> int:
     """Returns score in 0..100. Empty/short answers are graded as 0."""
     if not quiz:
         return 0
     if len(answer_indices) != len(quiz):
         return 0
     correct = 0
-    for q, idx in zip(quiz, answer_indices):
+    for q, idx in zip(quiz, answer_indices, strict=False):
         opts = q.get("options", [])
         if 0 <= idx < len(opts) and opts[idx].get("correct"):
             correct += 1

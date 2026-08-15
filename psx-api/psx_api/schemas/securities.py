@@ -113,7 +113,7 @@ class AnnouncementsListResponse(BaseModel):
 
 
 class IndexPerformance(BaseModel):
-    name: str           # "KSE-100", "KSE-30", "KMI-30"
+    name: str  # "KSE-100", "KSE-30", "KMI-30"
     constituent_count: int
     # Latest trading day stats — None until OHLCV data is loaded
     last_close_date: date | None

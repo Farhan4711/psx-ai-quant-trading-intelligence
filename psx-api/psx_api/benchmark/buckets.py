@@ -19,6 +19,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+from psx_api.timezone import today_pkt
 
 MIN_BUCKET_SAMPLES = 5  # k-anonymity floor
 
@@ -26,10 +27,8 @@ MIN_BUCKET_SAMPLES = 5  # k-anonymity floor
 def age_bucket(dob: date | None, today: date | None = None) -> str:
     if dob is None:
         return "unknown"
-    today = today or date.today()
-    years = today.year - dob.year - (
-        (today.month, today.day) < (dob.month, dob.day)
-    )
+    today = today or today_pkt()
+    years = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
     if years < 25:
         return "18-24"
     if years < 35:
@@ -62,7 +61,9 @@ def archetype_bucket(archetype: str | None) -> str:
 
 def bucket_label(archetype: str, age: str, size: str) -> str:
     """Human-readable label for the UI panel header."""
-    pretty_arche = archetype.replace("_", " ").title() if archetype != "unknown" else "Unspecified profile"
+    pretty_arche = (
+        archetype.replace("_", " ").title() if archetype != "unknown" else "Unspecified profile"
+    )
     age_str = "Unknown age" if age == "unknown" else age
     size_str = "Unknown portfolio size" if size == "unknown" else size + " PKR"
     return f"{pretty_arche} · {age_str} · {size_str}"

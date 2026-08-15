@@ -30,9 +30,7 @@ class SuspiciousDay(Base):
     vol_spike: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     price_change_pct: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     anomaly_score: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
-    has_news_context: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    has_news_context: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 

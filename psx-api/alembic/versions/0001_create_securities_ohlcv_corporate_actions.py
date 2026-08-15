@@ -5,15 +5,16 @@ Revises:
 Create Date: 2026-05-07
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "0001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -60,12 +61,12 @@ def upgrade() -> None:
         sa.Column("volume", sa.BigInteger(), nullable=True),
         sa.Column("value_pkr", sa.Numeric(20, 2), nullable=True),
         sa.Column("adjusted_close", sa.Numeric(12, 4), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["symbol"], ["securities.symbol"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["symbol"], ["securities.symbol"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("symbol", "date"),
     )
-    op.create_index("ix_ohlcv_daily_symbol_date_desc", "ohlcv_daily", ["symbol", sa.text("date DESC")])
+    op.create_index(
+        "ix_ohlcv_daily_symbol_date_desc", "ohlcv_daily", ["symbol", sa.text("date DESC")]
+    )
 
     # Convert to TimescaleDB hypertable — partitioned by date, 1-month chunks
     op.execute(
@@ -93,14 +94,14 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("NOW()"),
         ),
-        sa.ForeignKeyConstraint(
-            ["symbol"], ["securities.symbol"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["symbol"], ["securities.symbol"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_corporate_actions_symbol", "corporate_actions", ["symbol"])
     op.create_index("ix_corporate_actions_action_type", "corporate_actions", ["action_type"])
-    op.create_index("ix_corporate_actions_announcement_date", "corporate_actions", ["announcement_date"])
+    op.create_index(
+        "ix_corporate_actions_announcement_date", "corporate_actions", ["announcement_date"]
+    )
 
 
 def downgrade() -> None:

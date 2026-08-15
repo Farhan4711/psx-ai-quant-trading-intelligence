@@ -26,12 +26,11 @@ must handle this (drop / impute / mask).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import log, sqrt
-from typing import Sequence
 
 from psx_api.indicators import compute
-
 
 # ── Inputs ──────────────────────────────────────────────────────────────
 
@@ -123,9 +122,7 @@ def compute_features(
         win_high = max(highs[-14:])
         win_low = min(lows[-14:])
         denom = win_high - win_low
-        out["williams_r_14"] = (
-            -100 * (win_high - last) / denom if denom != 0 else 0.0
-        )
+        out["williams_r_14"] = -100 * (win_high - last) / denom if denom != 0 else 0.0
     else:
         out["williams_r_14"] = None
 
@@ -151,9 +148,7 @@ def compute_features(
     obv_series = compute.obv(closes, volumes)
     if n >= 6 and obv_series[-1] is not None and obv_series[-6] is not None:
         prev_obv = obv_series[-6]
-        out["obv_change_5d"] = (
-            (obv_series[-1] - prev_obv) / abs(prev_obv) if prev_obv != 0 else 0.0
-        )
+        out["obv_change_5d"] = (obv_series[-1] - prev_obv) / abs(prev_obv) if prev_obv != 0 else 0.0
     else:
         out["obv_change_5d"] = None
 

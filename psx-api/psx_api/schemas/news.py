@@ -31,7 +31,7 @@ class ArticleWithSentiment(BaseModel):
 class NewsPulseResponse(BaseModel):
     symbol: str
     as_of_date: date
-    score: float                  # in [-100, +100]
+    score: float  # in [-100, +100]
     article_count: int
     weighted_count: float
     top_articles: list[ArticleWithSentiment]

@@ -10,8 +10,7 @@ days never change.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -26,7 +25,7 @@ IndicatorKey = Literal[
 ]
 
 
-SUPPORTED: list[dict] = [
+SUPPORTED: list[dict[str, Any]] = [
     {"key": "rsi", "label": "RSI (14)", "category": "momentum"},
     {"key": "macd", "label": "MACD (12, 26, 9)", "category": "momentum"},
     {"key": "sma50", "label": "SMA 50", "category": "trend"},
@@ -40,14 +39,14 @@ SUPPORTED: list[dict] = [
 
 
 class IndicatorService:
-    def __init__(self, db: AsyncSession, redis: Redis | None = None) -> None:  # type: ignore[type-arg]
+    def __init__(self, db: AsyncSession, redis: Redis | None = None) -> None:
         self._db = db
         self._redis = redis
 
-    async def compute_indicator(self, symbol: str, indicator: IndicatorKey) -> dict:
+    async def compute_indicator(self, symbol: str, indicator: IndicatorKey) -> dict[str, Any]:
         cache_key = f"indicator:{symbol}:{indicator}"
 
-        async def _load() -> dict:
+        async def _load() -> dict[str, Any]:
             return await self._compute_uncached(symbol, indicator)
 
         if self._redis is None:
@@ -56,7 +55,7 @@ class IndicatorService:
 
     # ------------------------------------------------------------------
 
-    async def _compute_uncached(self, symbol: str, indicator: IndicatorKey) -> dict:
+    async def _compute_uncached(self, symbol: str, indicator: IndicatorKey) -> dict[str, Any]:
         # Pull last ~250 trading days — enough for SMA-200 with headroom
         rows = (
             await self._db.execute(
@@ -145,7 +144,7 @@ class IndicatorService:
         raise ValueError(f"Unknown indicator: {indicator}")
 
     @staticmethod
-    def _wrap(symbol: str, indicator: str, as_of: str, res: dict) -> dict:
+    def _wrap(symbol: str, indicator: str, as_of: str, res: dict[str, Any]) -> dict[str, Any]:
         return {
             "symbol": symbol,
             "indicator": indicator,

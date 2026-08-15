@@ -20,7 +20,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from psx_api.models.base import Base
 
-
 # ── Step 60: peer aggregates ────────────────────────────────────────────
 
 
@@ -31,18 +30,10 @@ class PeerAggregate(Base):
     age_bucket: Mapped[str] = mapped_column(String(20), primary_key=True)
     size_bucket: Mapped[str] = mapped_column(String(20), primary_key=True)
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    median_ytd_return_pct: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 4), nullable=True
-    )
-    top_holdings: Mapped[Any] = mapped_column(
-        JSONB, nullable=False, server_default="[]"
-    )
-    sector_allocation: Mapped[Any] = mapped_column(
-        JSONB, nullable=False, server_default="[]"
-    )
-    computed_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
-    )
+    median_ytd_return_pct: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    top_holdings: Mapped[Any] = mapped_column(JSONB, nullable=False, server_default="[]")
+    sector_allocation: Mapped[Any] = mapped_column(JSONB, nullable=False, server_default="[]")
+    computed_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
 
 # ── Steps 62-63: user strategies ────────────────────────────────────────
@@ -65,24 +56,18 @@ class UserStrategy(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     rules: Mapped[Any] = mapped_column(JSONB, nullable=False)
-    is_public: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     forked_from: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("user_strategies.id", ondelete="SET NULL"),
         nullable=True,
     )
-    created_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_user_strategies_user_name"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_user_strategies_user_name"),)
 
 
 # ── Step 64: notifications ──────────────────────────────────────────────
@@ -106,9 +91,7 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     link_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
 
 # ── Step 65: purification records ───────────────────────────────────────
@@ -133,19 +116,13 @@ class PurificationRecord(Base):
         ForeignKey("securities.symbol", ondelete="CASCADE"),
         nullable=False,
     )
-    dividends_received_pkr: Mapped[Decimal] = mapped_column(
-        Numeric(20, 2), nullable=False
-    )
+    dividends_received_pkr: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
     purification_pct: Mapped[Decimal] = mapped_column(
         Numeric(6, 4), nullable=False, server_default="5"
     )
-    purification_amount_pkr: Mapped[Decimal] = mapped_column(
-        Numeric(20, 2), nullable=False
-    )
+    purification_amount_pkr: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
     marked_donated_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
     __table_args__ = (
         UniqueConstraint(
@@ -171,9 +148,7 @@ class Lesson(Base):
     body_md: Mapped[str] = mapped_column(Text, nullable=False)
     quiz: Mapped[Any] = mapped_column(JSONB, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
-    created_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
 
 class UserLessonProgress(Base):
@@ -191,6 +166,4 @@ class UserLessonProgress(Base):
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     quiz_score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
-    last_seen_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
-    )
+    last_seen_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())

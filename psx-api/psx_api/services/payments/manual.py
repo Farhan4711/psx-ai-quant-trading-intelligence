@@ -22,7 +22,6 @@ from psx_api.services.payments.base import (
     PaymentGateway,
 )
 
-
 _INSTRUCTIONS_TEMPLATE = """
 Please transfer **PKR {amount}** to the following account and email
 your receipt + this reference number to **hello@psxai.example**:

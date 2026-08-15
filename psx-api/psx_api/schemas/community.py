@@ -4,7 +4,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Benchmark ──────────────────────────────────────────────────────────
 
 
@@ -19,7 +18,7 @@ class BenchmarkPanel(BaseModel):
     user_top_sector_pct: float | None = None
     peer_top_sector: str | None = None
     peer_top_sector_pct: float | None = None
-    peer_top_holdings: list[dict] = []
+    peer_top_holdings: list[dict[str, Any]] = []
     message: str | None = None
 
 
@@ -113,8 +112,8 @@ class LessonDetail(BaseModel):
     category: str
     difficulty: int
     body_md: str
-    quiz: list[dict]
-    progress: dict | None = None
+    quiz: list[dict[str, Any]]
+    progress: dict[str, Any] | None = None
 
 
 class QuizAttempt(BaseModel):

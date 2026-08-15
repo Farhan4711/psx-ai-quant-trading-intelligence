@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.get("/indicators")
-async def list_indicators() -> list[dict]:
+async def list_indicators() -> list[dict[str, Any]]:
     return SUPPORTED_INDICATORS
 
 
@@ -27,7 +27,7 @@ async def get_series(
     db: DbDep,
     date_from: date | None = None,
     date_to: date | None = None,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     valid = {i["key"] for i in SUPPORTED_INDICATORS}
     if indicator not in valid:
         raise HTTPException(

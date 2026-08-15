@@ -53,9 +53,7 @@ class CompanyAlias(Base):
     alias: Mapped[str] = mapped_column(String(255), nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
-    __table_args__ = (
-        UniqueConstraint("symbol", "alias", name="uq_company_aliases_symbol_alias"),
-    )
+    __table_args__ = (UniqueConstraint("symbol", "alias", name="uq_company_aliases_symbol_alias"),)
 
 
 class ArticleSentiment(Base):

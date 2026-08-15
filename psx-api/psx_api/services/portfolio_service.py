@@ -30,9 +30,7 @@ class PortfolioService:
 
     async def get(self, user_id: str, portfolio_id: str) -> Portfolio:
         result = await self._db.execute(
-            select(Portfolio).where(
-                Portfolio.id == portfolio_id, Portfolio.user_id == user_id
-            )
+            select(Portfolio).where(Portfolio.id == portfolio_id, Portfolio.user_id == user_id)
         )
         portfolio = result.scalar_one_or_none()
         if not portfolio:
@@ -42,9 +40,7 @@ class PortfolioService:
     async def get_or_create_default(self, user_id: str) -> Portfolio:
         """Returns the user's default portfolio, creating one named 'Main' if none exists."""
         result = await self._db.execute(
-            select(Portfolio).where(
-                Portfolio.user_id == user_id, Portfolio.is_default.is_(True)
-            )
+            select(Portfolio).where(Portfolio.user_id == user_id, Portfolio.is_default.is_(True))
         )
         existing = result.scalar_one_or_none()
         if existing:
@@ -91,13 +87,11 @@ class PortfolioService:
             raise PortfolioError(
                 f"You already have a portfolio named '{body.name}'.",
                 status_code=409,
-            )
+            ) from None
         await self._db.refresh(portfolio)
         return portfolio
 
-    async def update(
-        self, user_id: str, portfolio_id: str, body: PortfolioUpdate
-    ) -> Portfolio:
+    async def update(self, user_id: str, portfolio_id: str, body: PortfolioUpdate) -> Portfolio:
         portfolio = await self.get(user_id, portfolio_id)
 
         if body.is_default is True and not portfolio.is_default:
@@ -122,7 +116,7 @@ class PortfolioService:
             raise PortfolioError(
                 f"You already have a portfolio named '{body.name}'.",
                 status_code=409,
-            )
+            ) from None
         return portfolio
 
     async def delete(self, user_id: str, portfolio_id: str) -> None:

@@ -14,6 +14,7 @@ class OhlcvDaily(Base):
     Primary key is composite (symbol, date) — no surrogate id.
     Both raw and adjusted prices are stored to support accurate backtesting.
     """
+
     __tablename__ = "ohlcv_daily"
 
     symbol: Mapped[str] = mapped_column(

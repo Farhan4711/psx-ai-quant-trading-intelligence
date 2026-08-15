@@ -21,8 +21,7 @@ Outputs:
 
 from __future__ import annotations
 
-from typing import Sequence
-
+from collections.abc import Sequence
 
 Number = float
 Series = list[float | None]
@@ -115,12 +114,10 @@ def macd(
     slow_line = ema(closes, slow)
     macd_line: Series = [
         (f - s) if (f is not None and s is not None) else None
-        for f, s in zip(fast_line, slow_line)
+        for f, s in zip(fast_line, slow_line, strict=False)
     ]
     # Signal line = EMA of MACD line, computed only on the populated tail
-    populated_idx = next(
-        (i for i, v in enumerate(macd_line) if v is not None), len(macd_line)
-    )
+    populated_idx = next((i for i, v in enumerate(macd_line) if v is not None), len(macd_line))
     populated = [v for v in macd_line[populated_idx:] if v is not None]
     sig_tail = ema(populated, signal_period) if populated else []
     signal_line: Series = [None] * len(closes)
@@ -128,7 +125,7 @@ def macd(
         signal_line[populated_idx + offset] = v
     histogram: Series = [
         (m - s) if (m is not None and s is not None) else None
-        for m, s in zip(macd_line, signal_line)
+        for m, s in zip(macd_line, signal_line, strict=False)
     ]
     return {"macd": macd_line, "signal": signal_line, "histogram": histogram}
 
@@ -196,8 +193,8 @@ def atr(
         return out
     trs: list[float] = []
     for i in range(1, n):
-        h, l, prev_c = highs[i], lows[i], closes[i - 1]
-        trs.append(max(h - l, abs(h - prev_c), abs(l - prev_c)))
+        h, lo, prev_c = highs[i], lows[i], closes[i - 1]
+        trs.append(max(h - lo, abs(h - prev_c), abs(lo - prev_c)))
     # Wilder's smoothing
     first_atr = sum(trs[:period]) / period
     out[period] = first_atr

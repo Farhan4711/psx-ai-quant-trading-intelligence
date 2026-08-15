@@ -4,17 +4,17 @@ from redis.asyncio import Redis, from_url
 
 from psx_api.config import settings
 
-_redis_pool: Redis | None = None  # type: ignore[type-arg]
+_redis_pool: Redis | None = None
 
 
-def get_redis_pool() -> Redis:  # type: ignore[type-arg]
+def get_redis_pool() -> Redis:
     global _redis_pool
     if _redis_pool is None:
-        _redis_pool = from_url(settings.redis_url, decode_responses=True)
+        _redis_pool = from_url(settings.redis_url, decode_responses=True)  # type: ignore[no-untyped-call]
     return _redis_pool
 
 
-async def get_redis() -> AsyncGenerator[Redis, None]:  # type: ignore[type-arg]
+async def get_redis() -> AsyncGenerator[Redis, None]:
     redis = get_redis_pool()
     try:
         yield redis

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from collections.abc import Callable, Coroutine
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import TypeVar
 
 from redis.asyncio import Redis
 from sqlalchemy import func, select
@@ -25,9 +27,11 @@ from psx_api.schemas.securities import (
     SecurityResponse,
 )
 
+T = TypeVar("T")
+
 
 class SecuritiesService:
-    def __init__(self, db: AsyncSession, redis: Redis | None = None) -> None:  # type: ignore[type-arg]
+    def __init__(self, db: AsyncSession, redis: Redis | None = None) -> None:
         self._db = db
         self._redis = redis
 
@@ -35,11 +39,12 @@ class SecuritiesService:
     # Helpers
     # ------------------------------------------------------------------
 
-    async def _cached(self, key: str, ttl: int, loader: object) -> object:
+    async def _cached(
+        self, key: str, ttl: int, loader: Callable[[], Coroutine[object, object, T]]
+    ) -> T:
         if self._redis is None:
-            import inspect
-            return await loader()  # type: ignore[call-arg,misc]
-        return await cached(self._redis, key, ttl, loader)  # type: ignore[arg-type]
+            return await loader()
+        return await cached(self._redis, key, ttl, loader)
 
     # ------------------------------------------------------------------
     # Securities list
@@ -56,7 +61,9 @@ class SecuritiesService:
         search: str | None = None,
         active_only: bool = True,
     ) -> SecuritiesListResponse:
-        cache_key = f"sec_list:{page}:{page_size}:{sector}:{kmi_only}:{kse100_only}:{search}:{active_only}"
+        cache_key = (
+            f"sec_list:{page}:{page_size}:{sector}:{kmi_only}:{kse100_only}:{search}:{active_only}"
+        )
 
         async def _load() -> dict:  # type: ignore[type-arg]
             query = select(Security)
@@ -110,9 +117,7 @@ class SecuritiesService:
         return SecurityResponse.model_validate(data) if data else None
 
     async def upsert_security(self, data: SecurityCreate) -> SecurityResponse:
-        result = await self._db.execute(
-            select(Security).where(Security.symbol == data.symbol)
-        )
+        result = await self._db.execute(select(Security).where(Security.symbol == data.symbol))
         existing = result.scalar_one_or_none()
         if existing:
             for field, value in data.model_dump(exclude_unset=True).items():
@@ -167,15 +172,13 @@ class SecuritiesService:
         cache_key = f"fundamentals:{sym}"
 
         async def _load() -> dict | None:  # type: ignore[type-arg]
-            sec_result = await self._db.execute(
-                select(Security).where(Security.symbol == sym)
-            )
+            sec_result = await self._db.execute(select(Security).where(Security.symbol == sym))
             security = sec_result.scalar_one_or_none()
             if security is None:
                 return None
 
             # 52-week window from today
-            today = datetime.now(tz=timezone.utc).date()
+            today = datetime.now(tz=UTC).date()
             year_ago = today.replace(year=today.year - 1)
 
             stats = await self._db.execute(
@@ -194,9 +197,12 @@ class SecuritiesService:
             vol_stats = await self._db.execute(
                 select(func.avg(OhlcvDaily.volume).label("avg_vol")).where(
                     OhlcvDaily.symbol == sym,
-                    OhlcvDaily.date >= today.replace(month=today.month - 1)
-                    if today.month > 1
-                    else today.replace(year=today.year - 1, month=12),
+                    OhlcvDaily.date
+                    >= (
+                        today.replace(month=today.month - 1)
+                        if today.month > 1
+                        else today.replace(year=today.year - 1, month=12)
+                    ),
                 )
             )
             vol_row = vol_stats.one()
@@ -217,9 +223,7 @@ class SecuritiesService:
     # Announcements (corporate actions)
     # ------------------------------------------------------------------
 
-    async def get_announcements(
-        self, symbol: str, limit: int = 50
-    ) -> AnnouncementsListResponse:
+    async def get_announcements(self, symbol: str, limit: int = 50) -> AnnouncementsListResponse:
         sym = symbol.upper()
         cache_key = f"announcements:{sym}:{limit}"
 
@@ -272,8 +276,6 @@ class SecuritiesService:
         cache_key = f"quotes:{','.join(sorted(set(normalised)))}"
 
         async def _load() -> list[dict]:  # type: ignore[type-arg]
-            from sqlalchemy import tuple_
-
             # For each symbol get the two most recent OHLCV rows.
             # Use a subquery with ROW_NUMBER for portability across SQLite (tests) and Postgres.
             from sqlalchemy import func as _f
@@ -352,7 +354,6 @@ class SecuritiesService:
                 ("KMI-30", Security.is_kmi_compliant),
             ]
             results = []
-            today = datetime.now(tz=timezone.utc).date()
 
             for name, flag in indices:
                 count_result = await self._db.execute(

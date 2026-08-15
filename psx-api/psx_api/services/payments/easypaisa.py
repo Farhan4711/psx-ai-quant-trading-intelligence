@@ -36,7 +36,6 @@ from psx_api.services.payments.base import (
 )
 from psx_api.services.payments.jazzcash import _local_sandbox_url
 
-
 _LIVE_URL = "https://easypay.easypaisa.com.pk/easypay/Index.jsf"
 _SANDBOX_URL = "https://easypaystg.easypaisa.com.pk/easypay/Index.jsf"
 
@@ -74,7 +73,7 @@ class EasypaisaGateway(PaymentGateway):
             "storeId": self._store_id or "12345",
             "orderRefNum": ctx.merchant_txn_ref,
             "amount": _format_amount(ctx.amount_pkr),
-            "paymentMethod": "CC_PAYMENT_METHOD",        # CC = card, MA = mobile account
+            "paymentMethod": "CC_PAYMENT_METHOD",  # CC = card, MA = mobile account
             "merchantPaymentMethod": "OTC_PAYMENT_METHOD",
             "emailAddr": ctx.customer_email,
             "mobileNum": ctx.customer_phone or "",
@@ -101,9 +100,7 @@ class EasypaisaGateway(PaymentGateway):
 
     def verify_callback(self, payload: dict[str, Any]) -> CallbackResult:
         flat: dict[str, str] = {
-            k: ("" if v is None else str(v))
-            for k, v in payload.items()
-            if k != "merchantHashedReq"
+            k: ("" if v is None else str(v)) for k, v in payload.items() if k != "merchantHashedReq"
         }
         sent_hash = str(payload.get("merchantHashedReq") or "")
 
@@ -132,9 +129,7 @@ class EasypaisaGateway(PaymentGateway):
 
     def _compute_hash(self, fields: dict[str, str], order: tuple[str, ...]) -> str:
         # "&".join(f"{k}={v}" for k in order if fields.get(k))
-        message = "&".join(
-            f"{k}={fields[k]}" for k in order if fields.get(k)
-        )
+        message = "&".join(f"{k}={fields[k]}" for k in order if fields.get(k))
         digest = hmac.new(
             self._hash_key.encode("utf-8"),
             message.encode("utf-8"),

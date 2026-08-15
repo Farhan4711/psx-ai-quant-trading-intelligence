@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,11 +16,11 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.get("/securities/{symbol}/prediction")
-async def get_prediction(symbol: str, db: DbDep, horizon_days: int = 1) -> dict:
+async def get_prediction(symbol: str, db: DbDep, horizon_days: int = 1) -> dict[str, Any]:
     if horizon_days not in (1, 5):
         raise HTTPException(status_code=400, detail="horizon_days must be 1 or 5")
     service = PredictionService(db)
     try:
         return await service.predict(symbol, horizon_days=horizon_days)
     except PredictionError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

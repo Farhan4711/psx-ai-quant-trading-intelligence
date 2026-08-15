@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-
 _TWO = Decimal("0.01")
 DEFAULT_PURIFICATION_PCT = Decimal("5.0")
 

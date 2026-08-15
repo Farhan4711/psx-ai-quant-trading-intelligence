@@ -49,8 +49,9 @@ async def _send(to: str, subject: str, body: str) -> None:
         )
         return
 
-    import aiosmtplib  # type: ignore[import-not-found]
     from email.mime.text import MIMEText
+
+    import aiosmtplib
 
     msg = MIMEText(body, "plain", "utf-8")
     msg["From"] = settings.smtp_from_email

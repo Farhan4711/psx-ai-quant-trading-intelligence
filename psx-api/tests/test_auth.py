@@ -42,7 +42,9 @@ class TestSignup:
     async def test_returns_201_on_success(self, auth_client: AsyncClient) -> None:
         user = _make_user()
         with (
-            patch("psx_api.services.auth_service.AuthService.signup", new=AsyncMock(return_value=user)),
+            patch(
+                "psx_api.services.auth_service.AuthService.signup", new=AsyncMock(return_value=user)
+            ),
             patch("psx_api.database.get_db", new=AsyncMock()),
             patch("psx_api.redis_client.get_redis", new=AsyncMock()),
         ):

@@ -37,7 +37,6 @@ from psx_api.services.payments.base import (
 )
 from psx_api.services.payments.jazzcash import _local_sandbox_url
 
-
 _LIVE_URL = "https://payfast.1link.net.pk/PayFast/Checkout"
 _SANDBOX_URL = "https://payfaststg.1link.net.pk/PayFast/Checkout"
 
@@ -108,11 +107,13 @@ class AlliedPayFastGateway(PaymentGateway):
 
     def _sign(self, fields: dict[str, str]) -> str:
         """HMAC-SHA256 over 'k1=v1&k2=v2&...' in ASCII key order."""
-        message = "&".join(
-            f"{k}={fields[k]}" for k in sorted(fields) if fields[k]
+        message = "&".join(f"{k}={fields[k]}" for k in sorted(fields) if fields[k])
+        return (
+            hmac.new(
+                self._secret.encode("utf-8"),
+                message.encode("utf-8"),
+                hashlib.sha256,
+            )
+            .hexdigest()
+            .upper()
         )
-        return hmac.new(
-            self._secret.encode("utf-8"),
-            message.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest().upper()

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Alias:
     symbol: str
-    surface: str        # "Engro Corporation Limited"
+    surface: str  # "Engro Corporation Limited"
     pattern: re.Pattern[str]
 
 
@@ -86,7 +86,7 @@ def aliases_from_securities(rows: list[tuple[str, str]]) -> list[tuple[str, str]
         if not symbol:
             continue
         sym = symbol.strip().upper()
-        out.append((sym, sym))             # the ticker itself
+        out.append((sym, sym))  # the ticker itself
 
         if not name:
             continue
@@ -106,11 +106,7 @@ def aliases_from_securities(rows: list[tuple[str, str]]) -> list[tuple[str, str]
         # >= 4 letters and not a common English word.
         first = cleaned.split()[0] if cleaned else ""
         common = {"the", "national", "pakistan", "united", "first", "general"}
-        if (
-            len(first) >= 4
-            and first.lower() not in common
-            and first.lower() != cleaned.lower()
-        ):
+        if len(first) >= 4 and first.lower() not in common and first.lower() != cleaned.lower():
             out.append((sym, first))
 
     return out

@@ -2,10 +2,7 @@
 
 from datetime import date
 
-import pytest
-
 from psx_api.alerts.pump_dump import (
-    AnomalyFeatures,
     DailyBar,
     anomaly_score,
     detect_rule,
@@ -19,7 +16,6 @@ from psx_api.news.extract import (
 )
 from psx_api.news.pulse import PulseInput, compute_pulse
 from psx_api.news.sentiment import score_lexicon
-
 
 # ── Entity extraction ──────────────────────────────────────────────────
 
@@ -36,9 +32,7 @@ class TestEntityExtraction:
         assert "BANK" not in out
 
     def test_long_aliases_take_precedence(self) -> None:
-        idx = build_alias_index(
-            [("ENGRO", "Engro"), ("EFERT", "Engro Fertilizers")]
-        )
+        idx = build_alias_index([("ENGRO", "Engro"), ("EFERT", "Engro Fertilizers")])
         out = extract_mentions("Engro Fertilizers and Engro Corp", idx)
         # "Engro Fertilizers" matches once, "Engro" matches once standalone
         assert out.get("EFERT") == 1
@@ -69,9 +63,7 @@ class TestSentiment:
         assert result.event_type in ("earnings", "general")
 
     def test_strongly_negative(self) -> None:
-        result = score_lexicon(
-            "Lawsuit and fraud investigation: shares plunged after the scandal."
-        )
+        result = score_lexicon("Lawsuit and fraud investigation: shares plunged after the scandal.")
         assert result.polarity < -0.5
         assert result.event_type == "scandal"
 
@@ -197,18 +189,19 @@ class TestPumpDump:
         # History needs some variance for z-scores to be meaningful — we
         # vary volume + close slightly across the window.
         import random
+
         random.seed(42)
         normal_bars: list[DailyBar] = []
         prev = 100.0
         for _ in range(40):
-            close = prev * (1 + (random.random() - 0.5) * 0.02)  # ±1%
+            close = prev * (1 + (random.random() - 0.5) * 0.02)  # +-1%  # noqa: S311
             normal_bars.append(
                 DailyBar(
                     open=prev,
                     high=max(prev, close) * 1.005,
                     low=min(prev, close) * 0.995,
                     close=close,
-                    volume=900_000 + random.random() * 200_000,
+                    volume=900_000 + random.random() * 200_000,  # noqa: S311
                     prev_close=prev,
                 )
             )

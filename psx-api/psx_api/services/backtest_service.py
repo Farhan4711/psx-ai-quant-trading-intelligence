@@ -15,8 +15,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from psx_api.backtest import metrics as M
-from psx_api.backtest import narrate
+from psx_api.backtest import metrics, narrate
 from psx_api.backtest.engine import Bar, run
 from psx_api.backtest.strategies import get_strategy
 from psx_api.models.ohlcv import OhlcvDaily
@@ -61,10 +60,11 @@ class BacktestService:
             warmup_bars=warmup,
         )
 
-        benchmark_pct = M.buy_and_hold_return_pct(bt)
-        m = M.compute_metrics(bt, benchmark_return_pct=benchmark_pct)
+        benchmark_pct = metrics.buy_and_hold_return_pct(bt)
+        m = metrics.compute_metrics(bt, benchmark_return_pct=benchmark_pct)
 
         from psx_api.backtest.strategies import list_strategies
+
         label = next(
             (s["label"] for s in list_strategies() if s["key"] == req.strategy),
             req.strategy,
@@ -121,9 +121,7 @@ class BacktestService:
 
     # ------------------------------------------------------------------
 
-    async def _load_bars(
-        self, symbol: str, start: date, end: date
-    ) -> list[Bar]:
+    async def _load_bars(self, symbol: str, start: date, end: date) -> list[Bar]:
         # Make sure the symbol exists; surface a clean 404 otherwise.
         sec = (
             await self._db.execute(select(Security).where(Security.symbol == symbol))

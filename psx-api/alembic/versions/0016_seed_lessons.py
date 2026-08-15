@@ -17,17 +17,17 @@ That keeps the migration replay-safe if someone has already seeded
 manually before upgrading.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision: str = "0016"
-down_revision: Union[str, None] = "0015"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0015"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -40,10 +40,9 @@ def upgrade() -> None:
     # Use the live SQLAlchemy connection so we can read existing slugs
     # before inserting (idempotency).
     bind = op.get_bind()
-    existing_slugs: set[str] = set(
-        r[0]
-        for r in bind.execute(sa.text("SELECT slug FROM lessons")).fetchall()
-    )
+    existing_slugs: set[str] = {
+        r[0] for r in bind.execute(sa.text("SELECT slug FROM lessons")).fetchall()
+    }
 
     payload = []
     for i, lesson in enumerate(CURRICULUM):
@@ -85,7 +84,8 @@ def downgrade() -> None:
     # We only delete the slugs we'd have inserted — leaves any
     # admin-edited rows intact.
     from psx_api.learning.curriculum import CURRICULUM
-    slugs = [l.slug for l in CURRICULUM]
+
+    slugs = [lesson.slug for lesson in CURRICULUM]
     if not slugs:
         return
     op.execute(

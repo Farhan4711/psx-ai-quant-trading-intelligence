@@ -37,7 +37,6 @@ from psx_api.services.payments.base import (
     PaymentGateway,
 )
 
-
 _LIVE_URL = "https://payments.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform"
 _SANDBOX_URL = "https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform"
 
@@ -110,9 +109,7 @@ class JazzCashGateway(PaymentGateway):
         # JazzCash sends all the original fields plus pp_ResponseCode and
         # a new pp_SecureHash. Recompute and compare in constant time.
         flat: dict[str, str] = {
-            k: ("" if v is None else str(v))
-            for k, v in payload.items()
-            if k != "pp_SecureHash"
+            k: ("" if v is None else str(v)) for k, v in payload.items() if k != "pp_SecureHash"
         }
         sent_hash = str(payload.get("pp_SecureHash") or "")
         expected = self._compute_hash(flat)
@@ -129,9 +126,7 @@ class JazzCashGateway(PaymentGateway):
         is_paid = response_code == "000"
         amount_paisas = payload.get("pp_Amount")
         amount_pkr = (
-            (Decimal(int(amount_paisas)) / Decimal(100))
-            if amount_paisas is not None
-            else None
+            (Decimal(int(amount_paisas)) / Decimal(100)) if amount_paisas is not None else None
         )
         return CallbackResult(
             merchant_txn_ref=str(payload.get("pp_TxnRefNo") or ""),
@@ -148,15 +143,17 @@ class JazzCashGateway(PaymentGateway):
         """Per JazzCash spec: HMAC-SHA256 over 'salt&v1&v2&...' where the
         values are taken in ASCII-sorted key order, skipping empties.
         Returns uppercase hex."""
-        ordered = [
-            v for k, v in sorted(fields.items()) if v not in ("", None)
-        ]
+        ordered = [v for k, v in sorted(fields.items()) if v not in ("", None)]
         message = self._salt + "&" + "&".join(ordered) if ordered else self._salt
-        return hmac.new(
-            self._salt.encode("utf-8"),
-            message.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest().upper()
+        return (
+            hmac.new(
+                self._salt.encode("utf-8"),
+                message.encode("utf-8"),
+                hashlib.sha256,
+            )
+            .hexdigest()
+            .upper()
+        )
 
 
 def _truncate_ref(ref: str) -> str:

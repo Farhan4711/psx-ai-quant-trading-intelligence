@@ -11,8 +11,7 @@ These are pure-Python tests — no DB, no HTTP. They cover:
 
 from __future__ import annotations
 
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -35,9 +34,7 @@ def _ctx(amount_pkr: str = "900.00", ref: str = "TPSXAI00001") -> CheckoutContex
         customer_phone="03001234567",
         return_url="http://localhost:3000/checkout/return?ref=" + ref,
         callback_url="http://localhost:8000/api/v1/billing/callback/PROVIDER",
-        expires_at_unix=int(
-            (datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()
-        ),
+        expires_at_unix=int((datetime.now(UTC) + timedelta(hours=1)).timestamp()),
     )
 
 
@@ -63,15 +60,9 @@ def test_jazzcash_sandbox_returns_local_url_when_creds_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Even if env vars somehow leak in from a developer's .env, clear them.
-    monkeypatch.setattr(
-        "psx_api.services.payments.jazzcash.settings.jazzcash_merchant_id", ""
-    )
-    monkeypatch.setattr(
-        "psx_api.services.payments.jazzcash.settings.jazzcash_password", ""
-    )
-    monkeypatch.setattr(
-        "psx_api.services.payments.jazzcash.settings.jazzcash_integrity_salt", ""
-    )
+    monkeypatch.setattr("psx_api.services.payments.jazzcash.settings.jazzcash_merchant_id", "")
+    monkeypatch.setattr("psx_api.services.payments.jazzcash.settings.jazzcash_password", "")
+    monkeypatch.setattr("psx_api.services.payments.jazzcash.settings.jazzcash_integrity_salt", "")
     gw = get_gateway("jazzcash")
     result = gw.create_intent(_ctx())
     assert result.is_sandbox is True
@@ -90,9 +81,7 @@ def test_jazzcash_verify_callback_rejects_forged_hash(
     monkeypatch.setattr(
         "psx_api.services.payments.jazzcash.settings.jazzcash_merchant_id", "MC00123"
     )
-    monkeypatch.setattr(
-        "psx_api.services.payments.jazzcash.settings.jazzcash_password", "abc"
-    )
+    monkeypatch.setattr("psx_api.services.payments.jazzcash.settings.jazzcash_password", "abc")
     monkeypatch.setattr(
         "psx_api.services.payments.jazzcash.settings.jazzcash_integrity_salt",
         "supersecret",
@@ -115,9 +104,7 @@ def test_jazzcash_verify_callback_accepts_matching_hash(
     monkeypatch.setattr(
         "psx_api.services.payments.jazzcash.settings.jazzcash_merchant_id", "MC00123"
     )
-    monkeypatch.setattr(
-        "psx_api.services.payments.jazzcash.settings.jazzcash_password", "abc"
-    )
+    monkeypatch.setattr("psx_api.services.payments.jazzcash.settings.jazzcash_password", "abc")
     monkeypatch.setattr(
         "psx_api.services.payments.jazzcash.settings.jazzcash_integrity_salt",
         "supersecret",
@@ -141,12 +128,8 @@ def test_jazzcash_verify_callback_accepts_matching_hash(
 
 
 def test_easypaisa_sandbox_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "psx_api.services.payments.easypaisa.settings.easypaisa_store_id", ""
-    )
-    monkeypatch.setattr(
-        "psx_api.services.payments.easypaisa.settings.easypaisa_hash_key", ""
-    )
+    monkeypatch.setattr("psx_api.services.payments.easypaisa.settings.easypaisa_store_id", "")
+    monkeypatch.setattr("psx_api.services.payments.easypaisa.settings.easypaisa_hash_key", "")
     gw = get_gateway("easypaisa")
     result = gw.create_intent(_ctx(amount_pkr="2500.00"))
     assert result.is_sandbox is True
@@ -159,45 +142,42 @@ def test_easypaisa_sandbox_path(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_meezan_callback_hash_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "psx_api.services.payments.meezan.settings.meezan_merchant_id", "MEZ_001"
-    )
-    monkeypatch.setattr(
-        "psx_api.services.payments.meezan.settings.meezan_secret_key", "mez_salt"
-    )
+    monkeypatch.setattr("psx_api.services.payments.meezan.settings.meezan_merchant_id", "MEZ_001")
+    monkeypatch.setattr("psx_api.services.payments.meezan.settings.meezan_secret_key", "mez_salt")
     import hashlib
+
     secret, merchant = "mez_salt", "MEZ_001"
     order_id, amount, rc, tid = "TPSX42", "900.00", "00", "MEZTX001"
     hash_input = f"{secret}|{merchant}|{order_id}|{amount}|{rc}|{tid}"
     correct = hashlib.sha256(hash_input.encode()).hexdigest()
     gw = get_gateway("meezan")
-    result = gw.verify_callback({
-        "OrderId": order_id,
-        "Amount": amount,
-        "RC": rc,
-        "TID": tid,
-        "Hash": correct,
-    })
+    result = gw.verify_callback(
+        {
+            "OrderId": order_id,
+            "Amount": amount,
+            "RC": rc,
+            "TID": tid,
+            "Hash": correct,
+        }
+    )
     assert result.status == "paid"
     assert result.gateway_txn_id == tid
 
 
 def test_meezan_callback_rejects_bad_hash(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "psx_api.services.payments.meezan.settings.meezan_merchant_id", "MEZ_001"
-    )
-    monkeypatch.setattr(
-        "psx_api.services.payments.meezan.settings.meezan_secret_key", "mez_salt"
-    )
+    monkeypatch.setattr("psx_api.services.payments.meezan.settings.meezan_merchant_id", "MEZ_001")
+    monkeypatch.setattr("psx_api.services.payments.meezan.settings.meezan_secret_key", "mez_salt")
     gw = get_gateway("meezan")
     with pytest.raises(GatewayError):
-        gw.verify_callback({
-            "OrderId": "TPSX42",
-            "Amount": "900.00",
-            "RC": "00",
-            "TID": "MEZTX001",
-            "Hash": "deadbeef" * 8,
-        })
+        gw.verify_callback(
+            {
+                "OrderId": "TPSX42",
+                "Amount": "900.00",
+                "RC": "00",
+                "TID": "MEZTX001",
+                "Hash": "deadbeef" * 8,
+            }
+        )
 
 
 # ── 1LINK PayFast (Allied/HBL/UBL/...) ────────────────────────────
@@ -255,9 +235,7 @@ def test_safepay_webhook_signature(monkeypatch: pytest.MonkeyPatch) -> None:
     import hmac
     import json
 
-    monkeypatch.setattr(
-        "psx_api.services.payments.safepay.settings.safepay_api_key", "sk_test_abc"
-    )
+    monkeypatch.setattr("psx_api.services.payments.safepay.settings.safepay_api_key", "sk_test_abc")
     monkeypatch.setattr(
         "psx_api.services.payments.safepay.settings.safepay_webhook_secret",
         "wh_secret_xyz",
@@ -282,20 +260,20 @@ def test_safepay_webhook_signature(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_safepay_bad_signature_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "psx_api.services.payments.safepay.settings.safepay_api_key", "sk_test_abc"
-    )
+    monkeypatch.setattr("psx_api.services.payments.safepay.settings.safepay_api_key", "sk_test_abc")
     monkeypatch.setattr(
         "psx_api.services.payments.safepay.settings.safepay_webhook_secret",
         "wh_secret_xyz",
     )
     gw = get_gateway("safepay")
     with pytest.raises(GatewayError):
-        gw.verify_callback({
-            "data": {"order_id": "TPSX00010", "state": "paid"},
-            "_signature": "00" * 32,
-            "_raw_body": b'{"data":{"order_id":"TPSX00010","state":"paid"}}',
-        })
+        gw.verify_callback(
+            {
+                "data": {"order_id": "TPSX00010", "state": "paid"},
+                "_signature": "00" * 32,
+                "_raw_body": b'{"data":{"order_id":"TPSX00010","state":"paid"}}',
+            }
+        )
 
 
 # ── Manual ────────────────────────────────────────────────────────

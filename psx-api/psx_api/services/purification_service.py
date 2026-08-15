@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -17,6 +18,7 @@ from psx_api.purification.calculator import (
     DividendRecord,
     compute_report,
 )
+from psx_api.timezone import today_pkt
 
 
 class PurificationService:
@@ -29,8 +31,8 @@ class PurificationService:
         *,
         fiscal_year: int | None = None,
         purification_pct: Decimal | None = None,
-    ) -> dict:
-        fiscal_year = fiscal_year or date.today().year
+    ) -> dict[str, Any]:
+        fiscal_year = fiscal_year or today_pkt().year
         pct = purification_pct or DEFAULT_PURIFICATION_PCT
 
         # Pull dividend transactions for KMI-compliant symbols only
@@ -61,15 +63,12 @@ class PurificationService:
             for r in rows
         ]
 
-        report = compute_report(
-            dividends, fiscal_year=fiscal_year, purification_pct=pct
-        )
+        report = compute_report(dividends, fiscal_year=fiscal_year, purification_pct=pct)
 
         # Pull existing donation marks for this user/year
         marks = (
             await self._db.execute(
-                select(PurificationRecord.symbol, PurificationRecord.marked_donated_at)
-                .where(
+                select(PurificationRecord.symbol, PurificationRecord.marked_donated_at).where(
                     PurificationRecord.user_id == user_id,
                     PurificationRecord.fiscal_year == fiscal_year,
                 )
@@ -84,13 +83,13 @@ class PurificationService:
             "total_purification_pkr": report.total_purification_pkr,
             "lines": [
                 {
-                    "symbol": l.symbol,
-                    "dividends_pkr": l.dividends_pkr,
-                    "purification_pct": l.purification_pct,
-                    "purification_amount_pkr": l.purification_amount_pkr,
-                    "marked_donated": l.symbol in marked_set,
+                    "symbol": ln.symbol,
+                    "dividends_pkr": ln.dividends_pkr,
+                    "purification_pct": ln.purification_pct,
+                    "purification_amount_pkr": ln.purification_amount_pkr,
+                    "marked_donated": ln.symbol in marked_set,
                 }
-                for l in report.lines
+                for ln in report.lines
             ],
         }
 
@@ -109,15 +108,13 @@ class PurificationService:
         ).scalar_one_or_none()
 
         if existing:
-            existing.marked_donated_at = (
-                datetime.now(timezone.utc) if donated else None
-            )
+            existing.marked_donated_at = datetime.now(UTC) if donated else None
             await self._db.flush()
             return
 
         # Need to compute the line to know the amount + dividends_pkr
         report = await self.report(user_id, fiscal_year=fiscal_year)
-        line = next((l for l in report["lines"] if l["symbol"] == symbol), None)
+        line = next((ln for ln in report["lines"] if ln["symbol"] == symbol), None)
         if not line:
             return  # nothing to mark
 
@@ -128,7 +125,7 @@ class PurificationService:
             dividends_received_pkr=line["dividends_pkr"],
             purification_pct=line["purification_pct"],
             purification_amount_pkr=line["purification_amount_pkr"],
-            marked_donated_at=datetime.now(timezone.utc) if donated else None,
+            marked_donated_at=datetime.now(UTC) if donated else None,
         )
         self._db.add(record)
         try:

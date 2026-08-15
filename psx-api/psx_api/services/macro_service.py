@@ -9,12 +9,12 @@ depends on, so we ship it now.
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from psx_api.models.macro import MacroIndicator
-
 
 SUPPORTED_INDICATORS = [
     {"key": "kibor_1m", "label": "KIBOR 1M", "unit": "%", "category": "rates"},
@@ -42,7 +42,7 @@ class MacroService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def list_indicators(self) -> list[dict]:
+    async def list_indicators(self) -> list[dict[str, Any]]:
         return SUPPORTED_INDICATORS
 
     async def series(
@@ -50,7 +50,7 @@ class MacroService:
         indicator: str,
         date_from: date | None = None,
         date_to: date | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         q = select(MacroIndicator.date, MacroIndicator.value).where(
             MacroIndicator.indicator == indicator
         )

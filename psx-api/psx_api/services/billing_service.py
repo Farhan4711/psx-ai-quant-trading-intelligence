@@ -11,7 +11,7 @@ the intent to `paid` and creates/extends the UserSubscription.
 from __future__ import annotations
 
 import secrets
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -26,6 +26,7 @@ from psx_api.services.payments import (
     GatewayError,
     get_gateway,
 )
+from psx_api.timezone import today_pkt
 
 
 class BillingError(Exception):
@@ -52,19 +53,21 @@ class BillingService:
 
     async def list_plans(self) -> list[SubscriptionPlan]:
         rows = (
-            await self._db.execute(
-                select(SubscriptionPlan)
-                .where(SubscriptionPlan.is_active.is_(True))
-                .order_by(SubscriptionPlan.display_order)
+            (
+                await self._db.execute(
+                    select(SubscriptionPlan)
+                    .where(SubscriptionPlan.is_active.is_(True))
+                    .order_by(SubscriptionPlan.display_order)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return list(rows)
 
     async def get_plan_by_slug(self, slug: str) -> SubscriptionPlan | None:
         return (
-            await self._db.execute(
-                select(SubscriptionPlan).where(SubscriptionPlan.slug == slug)
-            )
+            await self._db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == slug))
         ).scalar_one_or_none()
 
     # ── Subscriptions (per-user) ──────────────────────────────────
@@ -95,20 +98,24 @@ class BillingService:
             raise BillingError("Free plan not configured.", status_code=500)
 
         existing_rows = (
-            await self._db.execute(
-                select(UserSubscription).where(
-                    UserSubscription.user_id == user_id,
-                    UserSubscription.status.in_(("active", "trialing")),
+            (
+                await self._db.execute(
+                    select(UserSubscription).where(
+                        UserSubscription.user_id == user_id,
+                        UserSubscription.status.in_(("active", "trialing")),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for existing in existing_rows:
             existing.status = "canceled"
             existing.cancel_at_period_end = True
         if existing_rows:
             await self._db.flush()
 
-        today = date.today()
+        today = today_pkt()
         sub = UserSubscription(
             user_id=user_id,
             plan_id=plan.id,
@@ -181,15 +188,12 @@ class BillingService:
         # Prefix `T` so JazzCash accepts it; the other gateways are fine with
         # arbitrary alphanumerics.
         merchant_ref = "T" + secrets.token_hex(8).upper()
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        expires_at = datetime.now(UTC) + timedelta(hours=1)
 
         callback_url = (
-            settings.payments_base_url.rstrip("/")
-            + f"/api/v1/billing/callback/{provider}"
+            settings.payments_base_url.rstrip("/") + f"/api/v1/billing/callback/{provider}"
         )
-        return_url = (
-            settings.payments_return_url.rstrip("/") + f"?ref={merchant_ref}"
-        )
+        return_url = settings.payments_return_url.rstrip("/") + f"?ref={merchant_ref}"
 
         ctx = CheckoutContext(
             merchant_txn_ref=merchant_ref,
@@ -278,7 +282,7 @@ class BillingService:
         # Idempotent: a duplicate webhook for an already-paid intent
         # just records the second response_payload and returns.
         intent.response_payload = result.raw_payload
-        intent.returned_at = datetime.now(timezone.utc)
+        intent.returned_at = datetime.now(UTC)
         intent.gateway_txn_id = result.gateway_txn_id or intent.gateway_txn_id
 
         if intent.status == "paid":
@@ -314,21 +318,24 @@ class BillingService:
         # Cancel any other active subscription first (downgrade or
         # provider-switch case).
         existing = (
-            await self._db.execute(
-                select(UserSubscription).where(
-                    UserSubscription.user_id == intent.user_id,
-                    UserSubscription.status.in_(("active", "trialing")),
+            (
+                await self._db.execute(
+                    select(UserSubscription).where(
+                        UserSubscription.user_id == intent.user_id,
+                        UserSubscription.status.in_(("active", "trialing")),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for sub in existing:
             sub.status = "canceled"
             sub.cancel_at_period_end = True
 
-        today = date.today()
+        today = today_pkt()
         period_end = today + (
-            timedelta(days=365) if intent.billing_cycle == "annual"
-            else timedelta(days=30)
+            timedelta(days=365) if intent.billing_cycle == "annual" else timedelta(days=30)
         )
 
         sub = UserSubscription(

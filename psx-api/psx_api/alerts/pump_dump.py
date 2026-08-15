@@ -25,10 +25,9 @@ the DB I/O and persistence to suspicious_days.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import sqrt
-from typing import Sequence
-
 
 # ── Layer 1: rule-based ────────────────────────────────────────────────
 
@@ -48,7 +47,7 @@ class DailyBar:
 @dataclass(frozen=True)
 class RuleResult:
     triggered: bool
-    alert_type: str | None         # "pump" | "dump" | None
+    alert_type: str | None  # "pump" | "dump" | None
     vol_spike: float
     price_change_pct: float
     explanation: str
@@ -65,9 +64,7 @@ def detect_rule(today: DailyBar, vol_ma_20: float) -> RuleResult:
     `vol_ma_20` is the trailing-20-day mean volume excluding `today`.
     """
     vol_spike = today.volume / vol_ma_20 if vol_ma_20 > 0 else 0.0
-    price_change = (
-        (today.close - today.open) / today.open if today.open > 0 else 0.0
-    )
+    price_change = (today.close - today.open) / today.open if today.open > 0 else 0.0
 
     if vol_spike >= _VOL_SPIKE_THRESHOLD:
         if price_change >= _PRICE_CHANGE_THRESHOLD:
@@ -112,9 +109,9 @@ class AnomalyFeatures:
     close: float
     volume: float
     vol_spike: float
-    price_change_pct: float       # already in percent
-    intraday_range_pct: float     # (high - low) / open * 100
-    gap_pct: float                # (open - prev_close) / prev_close * 100
+    price_change_pct: float  # already in percent
+    intraday_range_pct: float  # (high - low) / open * 100
+    gap_pct: float  # (open - prev_close) / prev_close * 100
 
 
 def features_from(bar: DailyBar, vol_ma_20: float) -> AnomalyFeatures:
@@ -122,11 +119,7 @@ def features_from(bar: DailyBar, vol_ma_20: float) -> AnomalyFeatures:
     vol_spike = bar.volume / vol_ma_20 if vol_ma_20 > 0 else 0.0
     pc = (bar.close - bar.open) / bar.open * 100 if bar.open > 0 else 0.0
     range_pct = (bar.high - bar.low) / bar.open * 100 if bar.open > 0 else 0.0
-    gap_pct = (
-        (bar.open - bar.prev_close) / bar.prev_close * 100
-        if bar.prev_close
-        else 0.0
-    )
+    gap_pct = (bar.open - bar.prev_close) / bar.prev_close * 100 if bar.prev_close else 0.0
     return AnomalyFeatures(
         close=bar.close,
         volume=bar.volume,
@@ -137,9 +130,7 @@ def features_from(bar: DailyBar, vol_ma_20: float) -> AnomalyFeatures:
     )
 
 
-def anomaly_score(
-    today: AnomalyFeatures, history: Sequence[AnomalyFeatures]
-) -> float:
+def anomaly_score(today: AnomalyFeatures, history: Sequence[AnomalyFeatures]) -> float:
     """
     Z-score-norm anomaly score against the trailing window.
 

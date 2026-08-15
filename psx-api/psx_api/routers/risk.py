@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, status
@@ -14,13 +14,15 @@ from psx_api.redis_client import get_redis
 from psx_api.risk.profile import (
     ARCHETYPE_PROFILES,
     QUESTIONS,
-    InvalidAnswers,
+    InvalidAnswersError,
     evaluate,
 )
 from psx_api.schemas.risk import (
     Question as QuestionSchema,
-    QuestionOption,
+)
+from psx_api.schemas.risk import (
     QuestionnaireResponse,
+    QuestionOption,
     RiskProfileResult,
     SubmitAnswers,
 )
@@ -29,7 +31,7 @@ from psx_api.services.auth_service import AuthService
 router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
-RedisDep = Annotated[Redis, Depends(get_redis)]  # type: ignore[type-arg]
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 async def _current_user(
@@ -67,6 +69,7 @@ async def get_questionnaire() -> QuestionnaireResponse:
 @router.get("/profile", response_model=RiskProfileResult | None)
 async def get_profile(current_user: CurrentUser) -> RiskProfileResult | None:
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     if user.risk_archetype is None:
         return None
@@ -89,20 +92,19 @@ async def submit_answers(
     body: SubmitAnswers, current_user: CurrentUser, db: DbDep
 ) -> RiskProfileResult:
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
 
     try:
         result = evaluate(body.answers)
-    except InvalidAnswers as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        )
+    except InvalidAnswersError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     user.risk_archetype = result["archetype"]
     user.risk_tolerance_score = result["scores"]["risk_tolerance"]
     user.time_horizon_score = result["scores"]["time_horizon"]
     user.knowledge_score = result["scores"]["knowledge"]
-    user.risk_profile_completed_at = datetime.now(timezone.utc)
+    user.risk_profile_completed_at = datetime.now(UTC)
     await db.flush()
 
     return RiskProfileResult(

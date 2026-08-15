@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 PaymentProvider = Literal[
     "jazzcash",
     "easypaisa",
@@ -77,9 +76,7 @@ class PaymentIntentStatus(BaseModel):
 
     id: str
     provider: PaymentProvider
-    status: Literal[
-        "pending", "redirected", "paid", "failed", "canceled", "expired"
-    ]
+    status: Literal["pending", "redirected", "paid", "failed", "canceled", "expired"]
     amount_pkr: str
     billing_cycle: BillingCycle
     plan_slug: str

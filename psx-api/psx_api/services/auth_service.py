@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-import pyotp  # type: ignore[import-not-found]
+import pyotp
 import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -27,7 +27,6 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from psx_api.config import settings
 from psx_api.models.users import User, UserSession
 from psx_api.services.email_service import (
     send_password_reset_email,
@@ -39,8 +38,8 @@ logger = structlog.get_logger(__name__)
 _ph = PasswordHasher()
 
 _SESSION_COOKIE = "psx_session"
-_VERIFY_TTL = 86400       # 24 hours
-_RESET_TTL = 3600         # 1 hour
+_VERIFY_TTL = 86400  # 24 hours
+_RESET_TTL = 3600  # 1 hour
 _SESSION_TTL_DAYS = 30
 
 
@@ -50,13 +49,14 @@ def _sha256(token: str) -> str:
 
 class AuthError(Exception):
     """Raised for expected auth failures (wrong password, expired token, etc.)."""
+
     def __init__(self, message: str, status_code: int = 400) -> None:
         super().__init__(message)
         self.status_code = status_code
 
 
 class AuthService:
-    def __init__(self, db: AsyncSession, redis: Redis) -> None:  # type: ignore[type-arg]
+    def __init__(self, db: AsyncSession, redis: Redis) -> None:
         self._db = db
         self._redis = redis
 
@@ -102,7 +102,7 @@ class AuthService:
         if not user:
             raise AuthError("User not found.", status_code=404)
 
-        user.email_verified_at = datetime.now(tz=timezone.utc)
+        user.email_verified_at = datetime.now(tz=UTC)
         await self._db.flush()
         await self._redis.delete(f"email_verify:{token_hash}")
         logger.info("Email verified", user_id=user.id)
@@ -133,7 +133,7 @@ class AuthService:
         try:
             _ph.verify(user.password_hash, password)
         except VerifyMismatchError:
-            raise AuthError("Invalid email or password.", status_code=401)
+            raise AuthError("Invalid email or password.", status_code=401) from None
 
         # Rehash if argon2 parameters have been upgraded
         if _ph.check_needs_rehash(user.password_hash):
@@ -143,6 +143,8 @@ class AuthService:
         if user.totp_enabled:
             if not totp_code:
                 raise AuthError("TOTP code required.", status_code=401)
+            if not user.totp_secret:
+                raise AuthError("TOTP is misconfigured for this account.", status_code=401)
             totp = pyotp.TOTP(user.totp_secret)
             if not totp.verify(totp_code, valid_window=1):
                 raise AuthError("Invalid TOTP code.", status_code=401)
@@ -152,7 +154,7 @@ class AuthService:
         session = UserSession(
             user_id=user.id,
             token_hash=_sha256(raw_token),
-            expires_at=datetime.now(tz=timezone.utc) + timedelta(days=_SESSION_TTL_DAYS),
+            expires_at=datetime.now(tz=UTC) + timedelta(days=_SESSION_TTL_DAYS),
             user_agent=user_agent,
             ip_address=ip_address,
         )
@@ -168,7 +170,7 @@ class AuthService:
 
     async def get_session_user(self, raw_token: str) -> User | None:
         token_hash = _sha256(raw_token)
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         result = await self._db.execute(
             select(UserSession).where(
                 UserSession.token_hash == token_hash,
@@ -207,7 +209,7 @@ class AuthService:
         session matching `current_raw_token` is flagged `is_current` so
         the UI can render "this device" indicator + prevent the user
         from accidentally revoking it."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         result = await self._db.execute(
             select(UserSession)
             .where(
@@ -237,9 +239,7 @@ class AuthService:
         `revoked=False` means the session didn't exist (or belonged to
         another user, deliberately conflated to avoid leaking existence).
         `was_current=True` tells the router to also clear the cookie."""
-        result = await self._db.execute(
-            select(UserSession).where(UserSession.id == session_id)
-        )
+        result = await self._db.execute(select(UserSession).where(UserSession.id == session_id))
         session = result.scalar_one_or_none()
         if not session or session.user_id != user.id:
             return False, False
@@ -249,16 +249,12 @@ class AuthService:
         await self._db.flush()
         return True, was_current
 
-    async def revoke_other_sessions(
-        self, user: User, current_raw_token: str | None
-    ) -> int:
+    async def revoke_other_sessions(self, user: User, current_raw_token: str | None) -> int:
         """Delete every session for this user EXCEPT the one matching
         the caller's cookie. Returns the count of deleted sessions.
         Used by the "Sign out everywhere else" button."""
         current_hash = _sha256(current_raw_token) if current_raw_token else None
-        result = await self._db.execute(
-            select(UserSession).where(UserSession.user_id == user.id)
-        )
+        result = await self._db.execute(select(UserSession).where(UserSession.user_id == user.id))
         rows = result.scalars().all()
         deleted = 0
         for s in rows:
@@ -288,9 +284,7 @@ class AuthService:
         cooldown_key = f"email_verify_cooldown:{user.id}"
         # SETNX with 5-minute TTL — succeeds the first time, fails
         # while the key is still set.
-        acquired = await self._redis.set(
-            cooldown_key, "1", ex=300, nx=True
-        )
+        acquired = await self._redis.set(cooldown_key, "1", ex=300, nx=True)
         if not acquired:
             raise AuthError(
                 "We just sent a verification email. Wait 5 minutes before requesting another.",
@@ -335,7 +329,9 @@ class AuthService:
         await self._redis.delete(f"password_reset:{token_hash}")
         # Invalidate all existing sessions for this user
         await self._db.execute(
-            UserSession.__table__.delete().where(UserSession.user_id == user.id)
+            UserSession.__table__.delete().where(  # type: ignore[attr-defined]  # __table__ is always a Table at runtime for declarative models
+                UserSession.user_id == user.id
+            )
         )
         logger.info("Password reset", user_id=user.id)
 

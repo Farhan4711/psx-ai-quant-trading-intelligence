@@ -23,7 +23,6 @@ from psx_api.services.payments.base import (
 )
 from psx_api.services.payments.jazzcash import _local_sandbox_url
 
-
 _LIVE_CHECKOUT = "https://api.nayapay.com/checkout/v1/pay"
 _SANDBOX_CHECKOUT = "https://sandbox.nayapay.com/checkout/v1/pay"
 
@@ -75,7 +74,7 @@ class NayaPayGateway(PaymentGateway):
         raw_body = payload.pop("_raw_body", None)
         body_bytes = (
             raw_body
-            if isinstance(raw_body, (bytes, bytearray))
+            if isinstance(raw_body, bytes | bytearray)
             else json.dumps(payload, separators=(",", ":")).encode("utf-8")
         )
         expected = hmac.new(
@@ -88,15 +87,17 @@ class NayaPayGateway(PaymentGateway):
 
         status_raw = str(payload.get("status") or "").lower()
         status: Any = (
-            "paid" if status_raw == "completed"
-            else "canceled" if status_raw == "cancelled"
-            else "pending" if status_raw == "pending"
+            "paid"
+            if status_raw == "completed"
+            else "canceled"
+            if status_raw == "cancelled"
+            else "pending"
+            if status_raw == "pending"
             else "failed"
         )
         amount_paisas = payload.get("amount_paisas")
         amount_pkr = (
-            Decimal(int(amount_paisas)) / Decimal(100)
-            if amount_paisas is not None else None
+            Decimal(int(amount_paisas)) / Decimal(100) if amount_paisas is not None else None
         )
         return CallbackResult(
             merchant_txn_ref=str(payload.get("merchant_reference") or ""),

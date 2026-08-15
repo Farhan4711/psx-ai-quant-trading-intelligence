@@ -40,7 +40,9 @@ class WatchlistService:
             for item, sec in rows
         ]
 
-    async def add(self, user_id: str, symbol: str, note: str | None = None) -> WatchlistItemResponse:
+    async def add(
+        self, user_id: str, symbol: str, note: str | None = None
+    ) -> WatchlistItemResponse:
         sym = symbol.upper()
 
         # Verify security exists
@@ -51,6 +53,7 @@ class WatchlistService:
 
         # Get current max sort_order for this user
         from sqlalchemy import func
+
         max_order_result = await self._db.execute(
             select(func.max(WatchlistItem.sort_order)).where(WatchlistItem.user_id == user_id)
         )
@@ -62,7 +65,9 @@ class WatchlistService:
             await self._db.flush()
         except IntegrityError:
             await self._db.rollback()
-            raise WatchlistError(f"'{sym}' is already in your watchlist.", status_code=409)
+            raise WatchlistError(
+                f"'{sym}' is already in your watchlist.", status_code=409
+            ) from None
 
         await self._db.refresh(item)
         return WatchlistItemResponse(
@@ -101,7 +106,8 @@ class WatchlistService:
         unknown = [s for s in normalised if s not in by_symbol]
         if unknown:
             raise WatchlistError(
-                f"Symbols not in watchlist: {', '.join(unknown)}", status_code=400,
+                f"Symbols not in watchlist: {', '.join(unknown)}",
+                status_code=400,
             )
 
         for index, sym in enumerate(normalised, start=1):

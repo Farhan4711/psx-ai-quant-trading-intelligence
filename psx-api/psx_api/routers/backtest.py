@@ -28,4 +28,4 @@ async def run_backtest(req: BacktestRequest, db: DbDep) -> BacktestResult:
     try:
         return await service.run(req)
     except BacktestError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

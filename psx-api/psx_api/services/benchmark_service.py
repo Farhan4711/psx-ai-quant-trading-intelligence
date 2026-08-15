@@ -9,8 +9,8 @@ deploy + cron land).
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +23,7 @@ from psx_api.benchmark.buckets import (
     size_bucket,
 )
 from psx_api.models.community import PeerAggregate
-from psx_api.models.portfolios import HoldingsSnapshot, Portfolio
+from psx_api.models.portfolios import Portfolio
 from psx_api.models.users import User
 from psx_api.services.portfolio_summary_service import PortfolioSummaryService
 
@@ -32,17 +32,20 @@ class BenchmarkService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def panel(self, user: User) -> dict:
+    async def panel(self, user: User) -> dict[str, Any]:
         # Compute current portfolio value + sector mix for the user
         portfolios = (
-            await self._db.execute(
-                select(Portfolio).where(Portfolio.user_id == user.id)
-            )
-        ).scalars().all()
+            (await self._db.execute(select(Portfolio).where(Portfolio.user_id == user.id)))
+            .scalars()
+            .all()
+        )
         if not portfolios:
             return {
                 "available": False,
-                "message": "You don't have a portfolio yet. Start tracking trades to see how you compare.",
+                "message": (
+                    "You don't have a portfolio yet. "
+                    "Start tracking trades to see how you compare."
+                ),
             }
 
         # Sum portfolio value across all of the user's portfolios
@@ -58,13 +61,11 @@ class BenchmarkService:
             invested += data["total_invested_pkr"]
             ytd_return += Decimal(str(data["unrealized_pnl_pkr"]))
             for row in data["sector_allocation"]:
-                sector_totals[row["sector"]] = sector_totals.get(
-                    row["sector"], Decimal("0")
-                ) + row["value_pkr"]
+                sector_totals[row["sector"]] = (
+                    sector_totals.get(row["sector"], Decimal("0")) + row["value_pkr"]
+                )
 
-        ytd_pct = (
-            (ytd_return / invested * 100) if invested > 0 else Decimal("0")
-        )
+        ytd_pct = (ytd_return / invested * 100) if invested > 0 else Decimal("0")
         # User's top sector
         if sector_totals and portfolio_value > 0:
             top_sector, top_val = max(sector_totals.items(), key=lambda kv: kv[1])
@@ -104,21 +105,15 @@ class BenchmarkService:
             }
 
         median_ytd = (
-            float(agg.median_ytd_return_pct)
-            if agg.median_ytd_return_pct is not None
-            else None
+            float(agg.median_ytd_return_pct) if agg.median_ytd_return_pct is not None else None
         )
         # Percentile rank: where does the user sit?
         # Without a full distribution we approximate: above median → ~75th, below → ~25th
         if median_ytd is not None:
             if float(ytd_pct) > median_ytd:
-                pct_rank = 60 + min(
-                    35, int(abs(float(ytd_pct) - median_ytd))
-                )
+                pct_rank = 60 + min(35, int(abs(float(ytd_pct) - median_ytd)))
             else:
-                pct_rank = max(
-                    5, 40 - int(abs(median_ytd - float(ytd_pct)))
-                )
+                pct_rank = max(5, 40 - int(abs(median_ytd - float(ytd_pct))))
         else:
             pct_rank = None
 
@@ -129,9 +124,7 @@ class BenchmarkService:
             reverse=True,
         )
         peer_top_sector = peer_sectors[0]["sector"] if peer_sectors else None
-        peer_top_sector_pct = (
-            float(peer_sectors[0]["pct"]) if peer_sectors else None
-        )
+        peer_top_sector_pct = float(peer_sectors[0]["pct"]) if peer_sectors else None
 
         return {
             "available": True,

@@ -30,7 +30,6 @@ from psx_api.services.payments.base import (
 )
 from psx_api.services.payments.jazzcash import _local_sandbox_url
 
-
 _LIVE_CHECKOUT = "https://getsafepay.com/checkout/pay"
 _SANDBOX_CHECKOUT = "https://sandbox.api.getsafepay.com/checkout/pay"
 
@@ -74,9 +73,7 @@ class SafePayGateway(PaymentGateway):
         base = _LIVE_CHECKOUT if self._environment == "live" else _SANDBOX_CHECKOUT
         env_param = "production" if self._environment == "live" else "sandbox"
         checkout_url = (
-            f"{base}?env={env_param}"
-            f"&order_id={ctx.merchant_txn_ref}"
-            f"&source=custom"
+            f"{base}?env={env_param}" f"&order_id={ctx.merchant_txn_ref}" f"&source=custom"
         )
         return CheckoutResult(
             checkout_url=checkout_url,
@@ -92,7 +89,7 @@ class SafePayGateway(PaymentGateway):
         raw_body = payload.pop("_raw_body", None)
         body_bytes = (
             raw_body
-            if isinstance(raw_body, (bytes, bytearray))
+            if isinstance(raw_body, bytes | bytearray)
             else json.dumps(payload, separators=(",", ":")).encode("utf-8")
         )
 
@@ -119,7 +116,8 @@ class SafePayGateway(PaymentGateway):
 
         amount = data.get("amount") or data.get("amount_paid")
         amount_pkr = (
-            Decimal(int(amount)) / Decimal(100) if isinstance(amount, (int, float, str)) and str(amount).isdigit()
+            Decimal(int(amount)) / Decimal(100)
+            if isinstance(amount, int | float | str) and str(amount).isdigit()
             else (Decimal(str(amount)) if amount else None)
         )
 

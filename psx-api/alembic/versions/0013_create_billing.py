@@ -15,18 +15,17 @@ Stripe Atlas isn't viable for retail Pakistanis today, so the
 Easypaisa / a SafePay alternative when revenue justifies it.
 """
 
-from typing import Sequence, Union
-from datetime import date
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision: str = "0013"
-down_revision: Union[str, None] = "0012"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0012"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -79,7 +78,9 @@ def upgrade() -> None:
         sa.Column("provider_subscription_id", sa.String(200), nullable=True),
         sa.Column("period_start", sa.Date(), nullable=False),
         sa.Column("period_end", sa.Date(), nullable=False),
-        sa.Column("cancel_at_period_end", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "cancel_at_period_end", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -131,7 +132,7 @@ def upgrade() -> None:
             "name": "Pro",
             "tagline": "For the engaged investor who wants the analyst layer.",
             "price_pkr_monthly": "900",
-            "price_pkr_annual": "9000",   # ~PKR 750/mo annual
+            "price_pkr_annual": "9000",  # ~PKR 750/mo annual
             "features": [
                 "Everything in Free",
                 "Predictions on all stocks (Free sees top 20 only)",

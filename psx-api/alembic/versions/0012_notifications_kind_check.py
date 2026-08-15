@@ -11,16 +11,14 @@ unknown kinds. Add the constraint now while there's no production data
 to migrate.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
-
 revision: str = "0012"
-down_revision: Union[str, None] = "0011"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0011"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 _VALID_KINDS = (
@@ -34,9 +32,9 @@ _VALID_KINDS = (
 def upgrade() -> None:
     # Sanitise any existing rows first — set unknown kinds to 'system'
     # so the new CHECK constraint doesn't fail at install time.
+    # _VALID_KINDS is a hardcoded module-level tuple, not user input.
     op.execute(
-        "UPDATE notifications SET kind = 'system' "
-        "WHERE kind NOT IN ({})".format(
+        "UPDATE notifications SET kind = 'system' " "WHERE kind NOT IN ({})".format(  # noqa: S608
             ", ".join(f"'{k}'" for k in _VALID_KINDS)
         )
     )

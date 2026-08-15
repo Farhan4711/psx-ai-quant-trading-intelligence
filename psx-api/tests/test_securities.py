@@ -62,7 +62,9 @@ class TestListSecurities:
             "psx_api.services.securities_service.SecuritiesService.list_securities",
             new=mock,
         ):
-            await client.get("/api/v1/securities?sector=Fertilizer&kmi_only=true&kse100_only=true&search=eng")
+            await client.get(
+                "/api/v1/securities?sector=Fertilizer&kmi_only=true&kse100_only=true&search=eng"
+            )
 
         call_kwargs = mock.call_args.kwargs
         assert call_kwargs["sector"] == "Fertilizer"

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, BigInteger, Date, Integer, String, func
+from sqlalchemy import BigInteger, Boolean, Date, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from psx_api.models.base import Base

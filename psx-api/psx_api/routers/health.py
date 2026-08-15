@@ -25,7 +25,5 @@ async def sentry_check() -> None:
     end-to-end. Disabled in production unless explicitly opted-in via env.
     """
     if settings.is_production:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     raise RuntimeError("Sentry test exception — health/sentry-check")

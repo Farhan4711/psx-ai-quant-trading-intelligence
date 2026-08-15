@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +23,7 @@ from psx_api.models.predictions import ModelPrediction
 from psx_api.models.securities import Security
 from psx_api.predictions import ensemble
 from psx_api.predictions.features import MarketContext, OhlcvBar, compute_features
+from psx_api.timezone import today_pkt
 
 
 class PredictionError(Exception):
@@ -40,7 +42,7 @@ class PredictionService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def predict(self, symbol: str, *, horizon_days: int = 1) -> dict:
+    async def predict(self, symbol: str, *, horizon_days: int = 1) -> dict[str, Any]:
         symbol = symbol.upper().strip()
         sec = (
             await self._db.execute(select(Security).where(Security.symbol == symbol))
@@ -52,7 +54,7 @@ class PredictionService:
         if len(bars) < MIN_BARS_FOR_PREDICTION:
             return {
                 "symbol": symbol,
-                "as_of_date": bars[-1].close if False else None,
+                "as_of_date": None,
                 "predictions_disabled": True,
                 "reason": (
                     f"Only {len(bars)} bars of history available — need at least "
@@ -81,9 +83,7 @@ class PredictionService:
         # inference service (Phase 12). Falls back to the heuristic
         # silently if the service is unreachable or has no model for
         # this symbol — caller behaviour is unchanged either way.
-        result = ensemble.predict(
-            features, symbol=symbol, horizon_days=horizon_days
-        )
+        result = ensemble.predict(features, symbol=symbol, horizon_days=horizon_days)
 
         # Persist (best-effort — duplicate (symbol, as_of_date, version)
         # for the same trading day is fine to silently ignore)
@@ -112,7 +112,7 @@ class PredictionService:
 
     # ── Internals ─────────────────────────────────────────────────────
 
-    async def _load_recent_bars(self, symbol: str, *, n: int) -> list[dict]:
+    async def _load_recent_bars(self, symbol: str, *, n: int) -> list[dict[str, Any]]:
         rows = (
             await self._db.execute(
                 select(
@@ -200,11 +200,10 @@ class PredictionService:
 
     async def _live_accuracy_pct(self, symbol: str, model_version: str) -> float | None:
         """Rolling 30-day accuracy for this (symbol, model_version)."""
-        cutoff = date.today() - timedelta(days=30)
+        cutoff = today_pkt() - timedelta(days=30)
         rows = (
             await self._db.execute(
-                select(ModelPrediction.probability_up, ModelPrediction.realised_direction)
-                .where(
+                select(ModelPrediction.probability_up, ModelPrediction.realised_direction).where(
                     ModelPrediction.symbol == symbol,
                     ModelPrediction.model_version == model_version,
                     ModelPrediction.as_of_date >= cutoff,

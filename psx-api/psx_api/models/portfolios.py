@@ -46,9 +46,7 @@ class Portfolio(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_portfolios_user_name"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_portfolios_user_name"),)
 
     def __repr__(self) -> str:
         return f"<Portfolio {self.user_id} {self.name}>"
@@ -83,15 +81,9 @@ class Transaction(Base):
     brokerage_pkr: Mapped[Decimal] = mapped_column(
         Numeric(12, 4), nullable=False, server_default="0"
     )
-    fed_pkr: Mapped[Decimal] = mapped_column(
-        Numeric(12, 4), nullable=False, server_default="0"
-    )
-    cvt_pkr: Mapped[Decimal] = mapped_column(
-        Numeric(12, 4), nullable=False, server_default="0"
-    )
-    cgt_pkr: Mapped[Decimal] = mapped_column(
-        Numeric(12, 4), nullable=False, server_default="0"
-    )
+    fed_pkr: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, server_default="0")
+    cvt_pkr: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, server_default="0")
+    cgt_pkr: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, server_default="0")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 

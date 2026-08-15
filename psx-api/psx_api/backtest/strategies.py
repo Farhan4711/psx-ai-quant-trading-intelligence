@@ -14,30 +14,44 @@ StrategyFn matching the engine's contract. Keep them tiny and explicit
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
-from psx_api.backtest.engine import Bar
+from psx_api.backtest.engine import Bar, StrategyFn
 from psx_api.indicators import compute
 
 
-# Each entry: (key, label, default_params, factory)
-_REGISTRY: dict[str, dict] = {}
+@dataclass(frozen=True)
+class _StrategyEntry:
+    label: str
+    default_params: dict[str, Any]
+    factory: Callable[[dict[str, Any]], StrategyFn]
 
 
-def _register(key: str, label: str, default_params: dict, factory: Callable) -> None:
-    _REGISTRY[key] = {"label": label, "default_params": default_params, "factory": factory}
+_REGISTRY: dict[str, _StrategyEntry] = {}
 
 
-def get_strategy(key: str, params: dict | None = None) -> Callable[[list[Bar], int], "int | tuple[int, str]"]:
+def _register(
+    key: str,
+    label: str,
+    default_params: dict[str, Any],
+    factory: Callable[[dict[str, Any]], StrategyFn],
+) -> None:
+    _REGISTRY[key] = _StrategyEntry(label=label, default_params=default_params, factory=factory)
+
+
+def get_strategy(key: str, params: dict[str, Any] | None = None) -> StrategyFn:
     if key not in _REGISTRY:
         raise ValueError(f"Unknown strategy '{key}'. Valid: {sorted(_REGISTRY.keys())}")
-    merged = {**_REGISTRY[key]["default_params"], **(params or {})}
-    return _REGISTRY[key]["factory"](merged)
+    entry = _REGISTRY[key]
+    merged = {**entry.default_params, **(params or {})}
+    return entry.factory(merged)
 
 
-def list_strategies() -> list[dict]:
+def list_strategies() -> list[dict[str, Any]]:
     return [
-        {"key": k, "label": v["label"], "default_params": v["default_params"]}
+        {"key": k, "label": v.label, "default_params": v.default_params}
         for k, v in _REGISTRY.items()
     ]
 
@@ -52,11 +66,11 @@ def _closes(bars: list[Bar]) -> list[float]:
 # ── 1. SMA crossover ───────────────────────────────────────────────────
 
 
-def _sma_crossover_factory(params: dict):
+def _sma_crossover_factory(params: dict[str, Any]) -> StrategyFn:
     fast = int(params["fast_period"])
     slow = int(params["slow_period"])
 
-    def strategy(bars: list[Bar], i: int):
+    def strategy(bars: list[Bar], i: int) -> int | tuple[int, str]:
         closes = _closes(bars[: i + 1])
         if len(closes) < slow + 1:
             return 0
@@ -68,10 +82,18 @@ def _sma_crossover_factory(params: dict):
             return 0
         if fast_now > slow_now:
             if fast_prev <= slow_prev:
-                return 1, f"Golden cross: SMA-{fast} ({fast_now:.1f}) crossed above SMA-{slow} ({slow_now:.1f})"
+                return (
+                    1,
+                    f"Golden cross: SMA-{fast} ({fast_now:.1f}) crossed above "
+                    f"SMA-{slow} ({slow_now:.1f})",
+                )
             return 1, ""
         if fast_prev >= slow_prev:
-            return 0, f"Death cross: SMA-{fast} ({fast_now:.1f}) crossed below SMA-{slow} ({slow_now:.1f})"
+            return (
+                0,
+                f"Death cross: SMA-{fast} ({fast_now:.1f}) crossed below "
+                f"SMA-{slow} ({slow_now:.1f})",
+            )
         return 0, ""
 
     return strategy
@@ -88,12 +110,12 @@ _register(
 # ── 2. RSI oversold/overbought ─────────────────────────────────────────
 
 
-def _rsi_oversold_factory(params: dict):
+def _rsi_oversold_factory(params: dict[str, Any]) -> StrategyFn:
     period = int(params["period"])
     oversold = float(params["oversold"])
     overbought = float(params["overbought"])
 
-    def strategy(bars: list[Bar], i: int):
+    def strategy(bars: list[Bar], i: int) -> int | tuple[int, str] | None:
         closes = _closes(bars[: i + 1])
         if len(closes) < period + 2:
             return 0
@@ -104,12 +126,12 @@ def _rsi_oversold_factory(params: dict):
             return 1, f"RSI {rsi_now:.1f} below {oversold:.0f} — oversold buy signal"
         if rsi_now > overbought:
             return 0, f"RSI {rsi_now:.1f} above {overbought:.0f} — overbought, exit"
-        return None  # type: ignore[return-value]  # ambiguous → keep current state
+        return None  # ambiguous — keep current state
 
     # The engine expects 1/0 only. Wrap to coerce "no opinion" into "hold current".
     state = {"long": False}
 
-    def stateful(bars: list[Bar], i: int):
+    def stateful(bars: list[Bar], i: int) -> int | tuple[int, str]:
         decision = strategy(bars, i)
         if decision is None:
             return 1 if state["long"] else 0
@@ -131,12 +153,12 @@ _register(
 # ── 3. MACD signal cross ───────────────────────────────────────────────
 
 
-def _macd_signal_factory(params: dict):
+def _macd_signal_factory(params: dict[str, Any]) -> StrategyFn:
     fast = int(params["fast"])
     slow = int(params["slow"])
     signal_period = int(params["signal"])
 
-    def strategy(bars: list[Bar], i: int):
+    def strategy(bars: list[Bar], i: int) -> int | tuple[int, str]:
         closes = _closes(bars[: i + 1])
         if len(closes) < slow + signal_period + 5:
             return 0
@@ -162,11 +184,11 @@ _register(
 # ── 4. Bollinger Band mean reversion ───────────────────────────────────
 
 
-def _bollinger_revert_factory(params: dict):
+def _bollinger_revert_factory(params: dict[str, Any]) -> StrategyFn:
     period = int(params["period"])
     num_std = float(params["num_std"])
 
-    def strategy(bars: list[Bar], i: int):
+    def strategy(bars: list[Bar], i: int) -> int | tuple[int, str] | None:
         closes = _closes(bars[: i + 1])
         if len(closes) < period + 1:
             return 0
@@ -179,11 +201,11 @@ def _bollinger_revert_factory(params: dict):
             return 1, f"Price ({price:.1f}) at/below lower band ({lower:.1f}) — mean-revert long"
         if price >= middle:
             return 0, f"Price ({price:.1f}) reverted to middle band ({middle:.1f}) — exit"
-        return None  # type: ignore[return-value]
+        return None
 
     state = {"long": False}
 
-    def stateful(bars: list[Bar], i: int):
+    def stateful(bars: list[Bar], i: int) -> int | tuple[int, str]:
         decision = strategy(bars, i)
         if decision is None:
             return 1 if state["long"] else 0
@@ -205,8 +227,8 @@ _register(
 # ── 5. Buy and hold (benchmark) ────────────────────────────────────────
 
 
-def _buy_and_hold_factory(_params: dict):
-    def strategy(bars: list[Bar], i: int):
+def _buy_and_hold_factory(_params: dict[str, Any]) -> StrategyFn:
+    def strategy(bars: list[Bar], i: int) -> int | tuple[int, str]:
         # Always want to be long. Engine will open on the next bar's open.
         if i == 0 or len(bars) < 2:
             return 0

@@ -33,7 +33,7 @@ from psx_api.services.tax_rule_repository import TaxRuleRepository
 from psx_api.tax.cgt import (
     BuyLot,
     InsufficientLotsError,
-    NoApplicableTaxRule,
+    NoApplicableTaxRuleError,
     match_fifo,
 )
 
@@ -86,12 +86,12 @@ class TransactionService:
                 cgt, matched = await self._compute_sell_cgt(portfolio, body, user)
             except InsufficientLotsError as exc:
                 warnings.append(str(exc))
-            except NoApplicableTaxRule as exc:
+            except NoApplicableTaxRuleError as exc:
                 warnings.append(f"Tax rule lookup failed: {exc}")
 
-        total_charges = (
-            body.brokerage_pkr + body.fed_pkr + body.cvt_pkr + cgt
-        ).quantize(_TWO_PLACES)
+        total_charges = (body.brokerage_pkr + body.fed_pkr + body.cvt_pkr + cgt).quantize(
+            _TWO_PLACES
+        )
 
         if body.transaction_type == "buy":
             net = -(gross + body.brokerage_pkr + body.fed_pkr + body.cvt_pkr)
@@ -127,9 +127,7 @@ class TransactionService:
     ) -> tuple[Transaction, TransactionPreview]:
         preview = await self.preview(portfolio, body, user)
         if preview.warnings:
-            raise TransactionError(
-                "Cannot save transaction: " + "; ".join(preview.warnings)
-            )
+            raise TransactionError("Cannot save transaction: " + "; ".join(preview.warnings))
 
         txn = Transaction(
             portfolio_id=portfolio.id,
@@ -234,9 +232,7 @@ class TransactionService:
         ]
         return result.total_cgt_pkr, previews
 
-    async def _refresh_holdings_snapshot(
-        self, portfolio: Portfolio, symbol: str
-    ) -> None:
+    async def _refresh_holdings_snapshot(self, portfolio: Portfolio, symbol: str) -> None:
         """
         Recompute holdings_snapshot for (portfolio, symbol) from the full
         transaction history. O(n) per symbol — fine for retail volumes; if

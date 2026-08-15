@@ -23,10 +23,9 @@ Look-ahead avoidance:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
-from typing import Callable, Sequence
 
 
 @dataclass(frozen=True)
@@ -52,11 +51,11 @@ class Trade:
     exit_price: float
     quantity: float
     commission_pkr: float
-    gross_pnl_pkr: float       # (exit - entry) * qty, ignores fees
-    net_pnl_pkr: float         # after commissions
-    return_pct: float          # net_pnl / (entry_price * qty)
+    gross_pnl_pkr: float  # (exit - entry) * qty, ignores fees
+    net_pnl_pkr: float  # after commissions
+    return_pct: float  # net_pnl / (entry_price * qty)
     holding_days: int
-    reason_open: str           # human-readable signal trigger
+    reason_open: str  # human-readable signal trigger
     reason_close: str
 
 
@@ -64,7 +63,7 @@ class Trade:
 class EquityPoint:
     date: date
     equity_pkr: float
-    drawdown_pct: float        # from running high-water mark
+    drawdown_pct: float  # from running high-water mark
     in_position: bool
 
 
@@ -98,7 +97,7 @@ def run(
     strategy: StrategyFn,
     initial_capital_pkr: float,
     commission_per_side_pct: float = 0.15,  # default 0.15% retail rate
-    warmup_bars: int = 200,                  # don't trade before SMA-200 has enough data
+    warmup_bars: int = 200,  # don't trade before SMA-200 has enough data
 ) -> BacktestRun:
     """
     Walk the bar history, emit fills at next-bar open, return everything
@@ -132,11 +131,7 @@ def run(
         current_equity = cash + quantity * bar.close
         if current_equity > high_water:
             high_water = current_equity
-        drawdown = (
-            ((high_water - current_equity) / high_water * 100)
-            if high_water > 0
-            else 0.0
-        )
+        drawdown = ((high_water - current_equity) / high_water * 100) if high_water > 0 else 0.0
         equity_curve.append(
             EquityPoint(
                 date=bar.date,
@@ -235,9 +230,7 @@ def run(
             quantity = 0.0
             entry = None
 
-    final_equity = (
-        equity_curve[-1].equity_pkr if equity_curve else initial_capital_pkr
-    )
+    final_equity = equity_curve[-1].equity_pkr if equity_curve else initial_capital_pkr
     return BacktestRun(
         bars=bars_list,
         equity_curve=equity_curve,

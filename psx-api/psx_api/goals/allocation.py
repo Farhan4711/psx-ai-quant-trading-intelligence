@@ -19,7 +19,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-
 HorizonBucket = Literal["short", "medium", "long", "very_long"]
 
 
@@ -36,34 +35,34 @@ def horizon_bucket(months: int) -> HorizonBucket:
 # Each tuple is (equity_pct, tbills_pct, cash_pct) — must sum to 100.
 _TABLE: dict[str, dict[HorizonBucket, tuple[int, int, int]]] = {
     "conservative_saver": {
-        "short":     (0,   90, 10),
-        "medium":    (30,  65, 5),
-        "long":      (50,  47, 3),
-        "very_long": (60,  37, 3),
+        "short": (0, 90, 10),
+        "medium": (30, 65, 5),
+        "long": (50, 47, 3),
+        "very_long": (60, 37, 3),
     },
     "cautious_beginner": {
-        "short":     (10,  80, 10),
-        "medium":    (40,  55, 5),
-        "long":      (60,  37, 3),
-        "very_long": (70,  27, 3),
+        "short": (10, 80, 10),
+        "medium": (40, 55, 5),
+        "long": (60, 37, 3),
+        "very_long": (70, 27, 3),
     },
     "balanced_builder": {
-        "short":     (30,  60, 10),
-        "medium":    (50,  47, 3),
-        "long":      (70,  27, 3),
-        "very_long": (80,  17, 3),
+        "short": (30, 60, 10),
+        "medium": (50, 47, 3),
+        "long": (70, 27, 3),
+        "very_long": (80, 17, 3),
     },
     "growth_seeker": {
-        "short":     (40,  55, 5),
-        "medium":    (65,  32, 3),
-        "long":      (85,  12, 3),
-        "very_long": (95,   3, 2),
+        "short": (40, 55, 5),
+        "medium": (65, 32, 3),
+        "long": (85, 12, 3),
+        "very_long": (95, 3, 2),
     },
     "aggressive_trader": {
-        "short":     (50,  45, 5),
-        "medium":    (70,  27, 3),
-        "long":      (90,   8, 2),
-        "very_long": (100,  0, 0),
+        "short": (50, 45, 5),
+        "medium": (70, 27, 3),
+        "long": (90, 8, 2),
+        "very_long": (100, 0, 0),
     },
 }
 

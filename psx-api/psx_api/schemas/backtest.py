@@ -1,9 +1,8 @@
 from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
 
 StrategyKey = Literal[
     "sma_crossover",
@@ -17,7 +16,7 @@ StrategyKey = Literal[
 class StrategyMeta(BaseModel):
     key: str
     label: str
-    default_params: dict
+    default_params: dict[str, Any]
 
 
 class BacktestRequest(BaseModel):
@@ -27,7 +26,7 @@ class BacktestRequest(BaseModel):
     end_date: date
     initial_capital_pkr: Decimal = Field(default=Decimal("100000"), gt=0)
     commission_per_side_pct: float = Field(default=0.15, ge=0, le=5)
-    parameters: dict = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class TradeOut(BaseModel):

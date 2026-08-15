@@ -29,7 +29,6 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-
 Rating = Literal["feasible", "stretch", "aggressive", "unrealistic", "already_funded"]
 
 
@@ -249,9 +248,7 @@ def _required_pmt(*, target: float, pv: float, months: int, rate: float) -> floa
     return deficit * r / (growth - 1)
 
 
-def _months_to_drop_to_feasible(
-    *, target: float, pv: float, pmt: float, rate: float
-) -> int | None:
+def _months_to_drop_to_feasible(*, target: float, pv: float, pmt: float, rate: float) -> int | None:
     """How many months to extend so that `rate` (e.g. 8%) is enough?"""
     # Walk months out and stop when FV at `rate` exceeds target.
     for months in range(1, 12 * 60):  # cap at 60 yrs

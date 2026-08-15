@@ -93,6 +93,7 @@ class UserResponse(BaseModel):
     @classmethod
     def from_user(cls, user: object) -> "UserResponse":
         from psx_api.models.users import User
+
         u: User = user  # type: ignore[assignment]
         return cls(
             id=u.id,

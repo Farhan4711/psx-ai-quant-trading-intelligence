@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,8 +22,8 @@ from psx_api.models.ohlcv import OhlcvDaily
 from psx_api.models.portfolios import HoldingsSnapshot, Portfolio, Transaction
 from psx_api.models.securities import Security
 from psx_api.services.tax_rule_repository import TaxRuleRepository
-from psx_api.tax.cgt import BuyLot, NoApplicableTaxRule, match_fifo
-
+from psx_api.tax.cgt import BuyLot, NoApplicableTaxRuleError, match_fifo
+from psx_api.timezone import today_pkt
 
 _TWO = Decimal("0.01")
 _HUNDRED = Decimal("100")
@@ -33,15 +34,13 @@ class PortfolioSummaryService:
         self._db = db
         self._tax_repo = TaxRuleRepository(db)
 
-    async def summary(self, portfolio: Portfolio, *, is_filer: bool) -> dict:
+    async def summary(self, portfolio: Portfolio, *, is_filer: bool) -> dict[str, Any]:
         holdings = await self._holdings_with_market(portfolio)
         ytd = await self._ytd_aggregates(portfolio)
         after_tax = await self._after_tax_unrealized(portfolio, holdings, is_filer=is_filer)
 
         total_invested = sum((h["total_invested_pkr"] for h in holdings), Decimal("0"))
-        current_value = sum(
-            (h["market_value_pkr"] or Decimal("0") for h in holdings), Decimal("0")
-        )
+        current_value = sum((h["market_value_pkr"] or Decimal("0") for h in holdings), Decimal("0"))
         unrealized = current_value - total_invested
         unrealized_pct = (
             (unrealized / total_invested * _HUNDRED).quantize(_TWO)
@@ -67,7 +66,7 @@ class PortfolioSummaryService:
 
     # ── Holdings + market data ─────────────────────────────────────
 
-    async def _holdings_with_market(self, portfolio: Portfolio) -> list[dict]:
+    async def _holdings_with_market(self, portfolio: Portfolio) -> list[dict[str, Any]]:
         rows = (
             await self._db.execute(
                 select(HoldingsSnapshot, Security)
@@ -97,9 +96,7 @@ class PortfolioSummaryService:
         )
         ohlcv_rows = (
             await self._db.execute(
-                select(subq.c.symbol, subq.c.date, subq.c.close, subq.c.rn).where(
-                    subq.c.rn <= 2
-                )
+                select(subq.c.symbol, subq.c.date, subq.c.close, subq.c.rn).where(subq.c.rn <= 2)
             )
         ).all()
 
@@ -111,7 +108,7 @@ class PortfolioSummaryService:
             elif rn_val == 2:
                 prev_close[sym] = Decimal(str(close)) if close is not None else None
 
-        out: list[dict] = []
+        out: list[dict[str, Any]] = []
         for h, sec in rows:
             last_dt, last_close = latest.get(h.symbol, (None, None))
             prev = prev_close.get(h.symbol)
@@ -153,8 +150,8 @@ class PortfolioSummaryService:
     # ── After-tax unrealized P&L ───────────────────────────────────
 
     async def _after_tax_unrealized(
-        self, portfolio: Portfolio, holdings: list[dict], *, is_filer: bool
-    ) -> dict:
+        self, portfolio: Portfolio, holdings: list[dict[str, Any]], *, is_filer: bool
+    ) -> dict[str, Any]:
         """
         For each holding, simulate selling all open lots at the latest close.
         Sum the CGT — that's what the user would owe at liquidation today.
@@ -169,10 +166,7 @@ class PortfolioSummaryService:
         if not holdings:
             return {"cgt_if_sold_pkr": Decimal("0"), "after_tax_pkr": Decimal("0")}
 
-        eligible = [
-            h for h in holdings
-            if h["last_close"] is not None and h["quantity"] > 0
-        ]
+        eligible = [h for h in holdings if h["last_close"] is not None and h["quantity"] > 0]
         if not eligible:
             return {"cgt_if_sold_pkr": Decimal("0"), "after_tax_pkr": Decimal("0")}
 
@@ -183,21 +177,25 @@ class PortfolioSummaryService:
         )
 
         brackets = await self._tax_repo.load_cgt_brackets()
-        today = date.today()
+        today = today_pkt()
 
         # Single batch load of every relevant transaction for this portfolio
         # and the held symbols. Chronological order matters for FIFO walk.
         txn_rows = (
-            await self._db.execute(
-                select(Transaction)
-                .where(
-                    Transaction.portfolio_id == portfolio.id,
-                    Transaction.symbol.in_(symbols),
-                    Transaction.transaction_type.in_(("buy", "bonus", "rights", "sell")),
+            (
+                await self._db.execute(
+                    select(Transaction)
+                    .where(
+                        Transaction.portfolio_id == portfolio.id,
+                        Transaction.symbol.in_(symbols),
+                        Transaction.transaction_type.in_(("buy", "bonus", "rights", "sell")),
+                    )
+                    .order_by(Transaction.transaction_date, Transaction.created_at)
                 )
-                .order_by(Transaction.transaction_date, Transaction.created_at)
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         # Partition into (buys-by-symbol, total-sells-by-symbol)
         buys_by_symbol: dict[str, list[Transaction]] = {s: [] for s in symbols}
@@ -250,7 +248,7 @@ class PortfolioSummaryService:
                     brackets=brackets,
                 )
                 total_cgt += result.total_cgt_pkr
-            except NoApplicableTaxRule:
+            except NoApplicableTaxRuleError:
                 # If no bracket matches today (data error), skip — show gross only
                 continue
 
@@ -261,8 +259,8 @@ class PortfolioSummaryService:
 
     # ── YTD aggregates ─────────────────────────────────────────────
 
-    async def _ytd_aggregates(self, portfolio: Portfolio) -> dict:
-        ytd_start = date(date.today().year, 1, 1)
+    async def _ytd_aggregates(self, portfolio: Portfolio) -> dict[str, Any]:
+        ytd_start = date(today_pkt().year, 1, 1)
 
         # Realized P&L YTD: sum of (sell.gross_value - matched cost). Approximation:
         # use sells.cgt_pkr / rate and reverse-engineer is hairy; cleaner is to
@@ -275,11 +273,10 @@ class PortfolioSummaryService:
         # (sells.gross - their corresponding cost basis from FIFO walk in YTD).
         # Simpler accurate approach: reuse the snapshot's lifetime realized_pnl
         # for now (most users start fresh in-app, so YTD ≈ lifetime in year 1).
-        from psx_api.models.portfolios import HoldingsSnapshot as _H
         realized_lifetime = (
             await self._db.execute(
-                select(func.coalesce(func.sum(_H.realized_pnl_pkr), 0)).where(
-                    _H.portfolio_id == portfolio.id
+                select(func.coalesce(func.sum(HoldingsSnapshot.realized_pnl_pkr), 0)).where(
+                    HoldingsSnapshot.portfolio_id == portfolio.id
                 )
             )
         ).scalar_one()
@@ -329,7 +326,7 @@ class PortfolioSummaryService:
     # ── Sector allocation ──────────────────────────────────────────
 
     @staticmethod
-    def _sector_allocation(holdings: list[dict]) -> list[dict]:
+    def _sector_allocation(holdings: list[dict[str, Any]]) -> list[dict[str, Any]]:
         by_sector: dict[str, Decimal] = {}
         total = Decimal("0")
         for h in holdings:

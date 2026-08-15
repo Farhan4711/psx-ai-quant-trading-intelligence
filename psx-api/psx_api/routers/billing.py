@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -29,7 +29,7 @@ from psx_api.services.payments import supported_providers
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
-RedisDep = Annotated[Redis, Depends(get_redis)]  # type: ignore[type-arg]
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 async def _current_user(
@@ -38,15 +38,11 @@ async def _current_user(
     psx_session: Annotated[str | None, Cookie()] = None,
 ) -> object:
     if not psx_session:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     auth = AuthService(db, redis)
     user = await auth.get_session_user(psx_session)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
     return user
 
 
@@ -73,10 +69,9 @@ async def list_payment_methods() -> list[PaymentMethodOption]:
 
 
 @router.get("/me", response_model=CurrentSubscriptionResponse)
-async def my_subscription(
-    db: DbDep, current_user: CurrentUser
-) -> CurrentSubscriptionResponse:
+async def my_subscription(db: DbDep, current_user: CurrentUser) -> CurrentSubscriptionResponse:
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     service = BillingService(db)
     sub, plan = await service.current_subscription(user.id)
@@ -92,14 +87,15 @@ async def my_subscription(
 
 
 @router.post("/subscribe-free", status_code=status.HTTP_201_CREATED)
-async def subscribe_free(db: DbDep, current_user: CurrentUser) -> dict:
+async def subscribe_free(db: DbDep, current_user: CurrentUser) -> dict[str, Any]:
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     service = BillingService(db)
     try:
         sub = await service.subscribe_free(user.id)
     except BillingError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"id": sub.id, "plan": "free", "status": sub.status}
 
 
@@ -119,6 +115,7 @@ async def begin_checkout(
         email the receipt.
     """
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     service = BillingService(db)
     try:
@@ -132,7 +129,7 @@ async def begin_checkout(
             billing_cycle=payload.billing_cycle,
         )
     except BillingError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return CheckoutResponse(**result)
 
 
@@ -143,6 +140,7 @@ async def get_intent_status(
     """The frontend polls this after a gateway return to know whether
     the webhook landed and the subscription activated."""
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
 
     intent = (
@@ -161,10 +159,10 @@ async def get_intent_status(
 
     return PaymentIntentStatus(
         id=pi.id,
-        provider=pi.provider,  # type: ignore[arg-type]
-        status=pi.status,  # type: ignore[arg-type]
+        provider=pi.provider,
+        status=pi.status,
         amount_pkr=str(pi.amount_pkr),
-        billing_cycle=pi.billing_cycle,  # type: ignore[arg-type]
+        billing_cycle=pi.billing_cycle,
         plan_slug=plan.slug,
         failure_reason=pi.failure_reason,
         created_at=pi.created_at,
@@ -176,9 +174,7 @@ async def get_intent_status(
 
 
 @router.post("/callback/{provider}", include_in_schema=False)
-async def gateway_callback(
-    provider: str, request: Request, db: DbDep
-) -> dict:
+async def gateway_callback(provider: str, request: Request, db: DbDep) -> dict[str, Any]:
     """
     Generic callback endpoint per provider. Accepts both
     `application/json` (SafePay/NayaPay webhook style) and
@@ -189,18 +185,16 @@ async def gateway_callback(
     A forged callback fails there before we touch the DB.
     """
     content_type = request.headers.get("content-type", "")
-    payload: dict
+    payload: dict[str, Any]
     raw_body = await request.body()
     if "application/json" in content_type:
         try:
             payload = json.loads(raw_body or b"{}")
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON body.")
+            raise HTTPException(status_code=400, detail="Invalid JSON body.") from None
         # Attach signature header + raw body for REST-style gateways.
         payload["_signature"] = (
-            request.headers.get("x-sfpy-signature")
-            or request.headers.get("x-np-signature")
-            or ""
+            request.headers.get("x-sfpy-signature") or request.headers.get("x-np-signature") or ""
         )
         payload["_raw_body"] = raw_body
     else:
@@ -211,7 +205,7 @@ async def gateway_callback(
     try:
         intent = await service.confirm_payment(provider=provider, payload=payload)
     except BillingError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     # Gateways generally just need a 200 — we return the merchant ref
     # too so test harnesses can verify the flow.
     return {
@@ -223,9 +217,7 @@ async def gateway_callback(
 
 
 @router.post("/sandbox-confirm/{intent_id}", include_in_schema=False)
-async def sandbox_confirm(
-    intent_id: str, db: DbDep, current_user: CurrentUser
-) -> dict:
+async def sandbox_confirm(intent_id: str, db: DbDep, current_user: CurrentUser) -> dict[str, Any]:
     """
     Dev-only convenience. When a gateway is in sandbox mode (no
     merchant creds set), the redirect lands on `/checkout/sandbox`
@@ -238,12 +230,11 @@ async def sandbox_confirm(
     """
     from psx_api.config import settings
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
 
     intent = (
-        await db.execute(
-            select(PaymentIntent).where(PaymentIntent.id == intent_id)
-        )
+        await db.execute(select(PaymentIntent).where(PaymentIntent.id == intent_id))
     ).scalar_one_or_none()
     if not intent or intent.user_id != user.id:
         raise HTTPException(status_code=404, detail="Intent not found.")
@@ -258,38 +249,46 @@ async def sandbox_confirm(
     # Compose a synthetic "paid" payload that each gateway's
     # verify_callback will accept (in sandbox mode the signature check
     # is bypassed automatically when creds aren't configured).
-    synthetic: dict = {
+    synthetic: dict[str, Any] = {
         "merchant_txn_ref": intent.merchant_txn_ref,
         "amount_pkr": str(intent.amount_pkr),
     }
     if intent.provider == "jazzcash":
-        synthetic.update({
-            "pp_TxnRefNo": intent.merchant_txn_ref,
-            "pp_ResponseCode": "000",
-            "pp_Amount": str(int(intent.amount_pkr * 100)),
-            "pp_RetreivalReferenceNo": "SANDBOX_" + intent.merchant_txn_ref,
-        })
+        synthetic.update(
+            {
+                "pp_TxnRefNo": intent.merchant_txn_ref,
+                "pp_ResponseCode": "000",
+                "pp_Amount": str(int(intent.amount_pkr * 100)),
+                "pp_RetreivalReferenceNo": "SANDBOX_" + intent.merchant_txn_ref,
+            }
+        )
     elif intent.provider == "easypaisa":
-        synthetic.update({
-            "orderRefNum": intent.merchant_txn_ref,
-            "status": "0000",
-            "paymentToken": "SANDBOX_" + intent.merchant_txn_ref,
-            "amount": str(intent.amount_pkr),
-        })
+        synthetic.update(
+            {
+                "orderRefNum": intent.merchant_txn_ref,
+                "status": "0000",
+                "paymentToken": "SANDBOX_" + intent.merchant_txn_ref,
+                "amount": str(intent.amount_pkr),
+            }
+        )
     elif intent.provider == "meezan":
-        synthetic.update({
-            "OrderId": intent.merchant_txn_ref,
-            "RC": "00",
-            "TID": "SANDBOX_" + intent.merchant_txn_ref,
-            "Amount": str(intent.amount_pkr),
-        })
+        synthetic.update(
+            {
+                "OrderId": intent.merchant_txn_ref,
+                "RC": "00",
+                "TID": "SANDBOX_" + intent.merchant_txn_ref,
+                "Amount": str(intent.amount_pkr),
+            }
+        )
     elif intent.provider == "allied_payfast":
-        synthetic.update({
-            "TRANSACTION_ID": intent.merchant_txn_ref,
-            "RESPONSE_CODE": "00",
-            "TRANSACTION_AMOUNT": str(intent.amount_pkr),
-            "REFERENCE_NUMBER": "SANDBOX_" + intent.merchant_txn_ref,
-        })
+        synthetic.update(
+            {
+                "TRANSACTION_ID": intent.merchant_txn_ref,
+                "RESPONSE_CODE": "00",
+                "TRANSACTION_AMOUNT": str(intent.amount_pkr),
+                "REFERENCE_NUMBER": "SANDBOX_" + intent.merchant_txn_ref,
+            }
+        )
     elif intent.provider == "safepay":
         synthetic = {
             "data": {
@@ -308,9 +307,7 @@ async def sandbox_confirm(
         }
 
     try:
-        result = await service.confirm_payment(
-            provider=intent.provider, payload=synthetic
-        )
+        result = await service.confirm_payment(provider=intent.provider, payload=synthetic)
     except BillingError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"ok": True, "intent_id": result.id, "status": result.status}

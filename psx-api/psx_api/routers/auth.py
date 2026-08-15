@@ -33,7 +33,7 @@ _COOKIE_NAME = "psx_session"
 _COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days in seconds
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
-RedisDep = Annotated[Redis, Depends(get_redis)]  # type: ignore[type-arg]
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 def _service(db: DbDep, redis: RedisDep) -> AuthService:
@@ -62,8 +62,7 @@ def _clear_session_cookie(response: Response) -> None:
 async def _get_current_user(
     service: ServiceDep,
     psx_session: Annotated[str | None, Cookie()] = None,
-) -> "from psx_api.models.users import User":  # type: ignore[return]
-    from psx_api.models.users import User as UserModel
+) -> object:
     if not psx_session:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     user = await service.get_session_user(psx_session)
@@ -79,13 +78,17 @@ CurrentUser = Annotated[object, Depends(_get_current_user)]
 # Endpoints
 # ------------------------------------------------------------------
 
+
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(body: SignupRequest, service: ServiceDep) -> dict[str, str]:
     try:
         user = await service.signup(body.email, body.password, body.full_name)
     except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
-    return {"message": "Account created. Please check your email to verify your address.", "user_id": user.id}
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return {
+        "message": "Account created. Please check your email to verify your address.",
+        "user_id": user.id,
+    }
 
 
 @router.post("/verify-email")
@@ -93,7 +96,7 @@ async def verify_email(body: VerifyEmailRequest, service: ServiceDep) -> dict[st
     try:
         await service.verify_email(body.token)
     except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"message": "Email verified successfully."}
 
 
@@ -117,12 +120,10 @@ async def login(
     user_agent = request.headers.get("user-agent")
 
     try:
-        user, token = await service.login(
-            body.email, body.password, body.totp_code, user_agent, ip
-        )
+        user, token = await service.login(body.email, body.password, body.totp_code, user_agent, ip)
     except AuthError as exc:
         await limiter.record_failure(ip)
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     await limiter.clear(ip)
     _set_session_cookie(response, token)
@@ -161,6 +162,7 @@ async def update_me(
     db: DbDep,
 ) -> UserResponse:
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     if body.shariah_mode is not None:
         user.shariah_mode = body.shariah_mode
@@ -178,13 +180,14 @@ async def update_me(
         user.notification_prefs = merged
     if body.date_of_birth is not None:
         from datetime import date as _date
+
         try:
             user.date_of_birth = _date.fromisoformat(body.date_of_birth)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="date_of_birth must be YYYY-MM-DD.",
-            )
+            ) from None
     await db.flush()
     return UserResponse.from_user(user)
 
@@ -200,13 +203,12 @@ async def reset_password(body: ResetPasswordRequest, service: ServiceDep) -> dic
     try:
         await service.reset_password(body.token, body.new_password)
     except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"message": "Password reset successfully. Please log in."}
 
 
 @router.post("/totp/setup", response_model=TotpSetupResponse)
 async def totp_setup(current_user: CurrentUser, service: ServiceDep) -> TotpSetupResponse:
-    from psx_api.models.users import User as UserModel
     result = await service.totp_setup(current_user)  # type: ignore[arg-type]
     return TotpSetupResponse(**result)
 
@@ -220,7 +222,7 @@ async def totp_confirm(
     try:
         await service.totp_confirm(current_user, body.totp_code)  # type: ignore[arg-type]
     except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"message": "Two-factor authentication enabled."}
 
 
@@ -233,7 +235,7 @@ async def totp_disable(
     try:
         await service.totp_disable(current_user, body.totp_code)  # type: ignore[arg-type]
     except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"message": "Two-factor authentication disabled."}
 
 
@@ -251,6 +253,7 @@ async def list_sessions(
     """All active sessions for the logged-in user. The session matching
     the caller's cookie is flagged `is_current=true`."""
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     return await service.list_sessions(user, psx_session)
 
@@ -266,16 +269,13 @@ async def revoke_session(
     """Revoke a single session. If the caller revokes their own
     current session this also clears the cookie (effectively logout)."""
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
-    revoked, was_current = await service.revoke_session(
-        user, session_id, psx_session
-    )
+    revoked, was_current = await service.revoke_session(user, session_id, psx_session)
     if not revoked:
         # 404 instead of 403 to avoid leaking session-ID existence to a
         # caller who doesn't own that session.
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found.")
     if was_current:
         # They killed their own current session — clear the cookie so
         # the next request 401s cleanly instead of dangling.
@@ -291,6 +291,7 @@ async def revoke_other_sessions(
 ) -> dict[str, int]:
     """Sign out every session except the caller's current one."""
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     count = await service.revoke_other_sessions(user, psx_session)
     return {"revoked": count}
@@ -309,9 +310,10 @@ async def resend_verification(
     """Issue a fresh verification email. Authed (we need the user-id
     for rate-limiting), 1 send per 5 min per user."""
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     try:
         await service.resend_verification_email(user)
     except AuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {"message": "Verification email sent. Check your inbox."}

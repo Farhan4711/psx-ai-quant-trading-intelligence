@@ -65,10 +65,18 @@ select = [
 ignore = [
     "S101",     # assert allowed in tests
     "B008",     # FastAPI Depends() in function defaults
+    # RUF001-003 flag ambiguous unicode in string/docstring/comment *content*
+    # (aimed at confusable identifiers). We use real en/em dashes deliberately
+    # in prose, comments, and user-facing labels (e.g. tax bracket text) —
+    # not a spoofing risk here.
+    "RUF001", "RUF002", "RUF003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]
+# Standard Alembic pattern: model imports must follow config setup so
+# autogenerate can see them — can't be hoisted to the top of the file.
+"alembic/env.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -15,7 +15,6 @@ import pytest
 
 from psx_api.predictions import ensemble
 
-
 _SAMPLE_FEATURES = {
     "log_return_1d": 0.01,
     "log_return_5d": 0.02,

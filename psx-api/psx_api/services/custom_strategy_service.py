@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from psx_api.models.community import UserStrategy
 from psx_api.schemas.community import StrategyCreate, StrategyUpdate
-from psx_api.strategy_builder.parse import InvalidStrategy, validate
+from psx_api.strategy_builder.parse import InvalidStrategyError, validate
 
 
 class StrategyError(Exception):
@@ -50,16 +50,14 @@ class CustomStrategyService:
 
     async def get(self, strategy_id: str) -> UserStrategy | None:
         return (
-            await self._db.execute(
-                select(UserStrategy).where(UserStrategy.id == strategy_id)
-            )
+            await self._db.execute(select(UserStrategy).where(UserStrategy.id == strategy_id))
         ).scalar_one_or_none()
 
     async def create(self, user_id: str, body: StrategyCreate) -> UserStrategy:
         try:
             validate(body.rules)
-        except InvalidStrategy as exc:
-            raise StrategyError(str(exc))
+        except InvalidStrategyError as exc:
+            raise StrategyError(str(exc)) from exc
 
         s = UserStrategy(
             user_id=user_id,
@@ -76,13 +74,11 @@ class CustomStrategyService:
             raise StrategyError(
                 f"You already have a strategy named '{body.name}'.",
                 status_code=409,
-            )
+            ) from None
         await self._db.refresh(s)
         return s
 
-    async def update(
-        self, user_id: str, strategy_id: str, body: StrategyUpdate
-    ) -> UserStrategy:
+    async def update(self, user_id: str, strategy_id: str, body: StrategyUpdate) -> UserStrategy:
         s = await self.get(strategy_id)
         if not s or s.user_id != user_id:
             raise StrategyError("Strategy not found.", status_code=404)
@@ -90,8 +86,8 @@ class CustomStrategyService:
         if body.rules is not None:
             try:
                 validate(body.rules)
-            except InvalidStrategy as exc:
-                raise StrategyError(str(exc))
+            except InvalidStrategyError as exc:
+                raise StrategyError(str(exc)) from exc
             s.rules = body.rules
         if body.name is not None:
             s.name = body.name
@@ -106,7 +102,7 @@ class CustomStrategyService:
             raise StrategyError(
                 f"You already have a strategy named '{body.name}'.",
                 status_code=409,
-            )
+            ) from None
         return s
 
     async def delete(self, user_id: str, strategy_id: str) -> None:
@@ -135,9 +131,8 @@ class CustomStrategyService:
         except IntegrityError:
             await self._db.rollback()
             raise StrategyError(
-                "You've already forked this strategy. Rename your existing "
-                "copy first.",
+                "You've already forked this strategy. Rename your existing " "copy first.",
                 status_code=409,
-            )
+            ) from None
         await self._db.refresh(s)
         return s

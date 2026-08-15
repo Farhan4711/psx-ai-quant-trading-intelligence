@@ -14,7 +14,7 @@ Three responsibilities:
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import desc, select
@@ -60,16 +60,20 @@ class AlertService:
         )
 
         rows = (
-            await self._db.execute(
-                select(SuspiciousDay)
-                .where(
-                    (SuspiciousDay.symbol.in_(wl_subq))
-                    | (SuspiciousDay.symbol.in_(holdings_subq))
+            (
+                await self._db.execute(
+                    select(SuspiciousDay)
+                    .where(
+                        (SuspiciousDay.symbol.in_(wl_subq))
+                        | (SuspiciousDay.symbol.in_(holdings_subq))
+                    )
+                    .order_by(desc(SuspiciousDay.alert_date), desc(SuspiciousDay.created_at))
+                    .limit(limit)
                 )
-                .order_by(desc(SuspiciousDay.alert_date), desc(SuspiciousDay.created_at))
-                .limit(limit)
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return list(rows)
 
     # ── Compute ───────────────────────────────────────────────────
@@ -132,9 +136,7 @@ class AlertService:
 
         # News context
         has_announcement = await self._has_recent_announcement(symbol, today_date)
-        has_high_impact_news, sentiment_pulse = await self._news_context(
-            symbol, today_date
-        )
+        has_high_impact_news, sentiment_pulse = await self._news_context(symbol, today_date)
 
         if not rule.triggered and score_value < 5.0:
             return None
@@ -151,8 +153,10 @@ class AlertService:
             # Pure statistical bump with low severity → don't pollute the inbox
             return None
 
-        explanation = rule.explanation if rule.triggered else (
-            f"Statistical anomaly score {score_value:.1f} (≥5 sigma)."
+        explanation = (
+            rule.explanation
+            if rule.triggered
+            else (f"Statistical anomaly score {score_value:.1f} (≥5 sigma).")
         )
         if has_announcement or has_high_impact_news:
             explanation += " Context: announced news today reduced severity."
@@ -202,17 +206,15 @@ class AlertService:
         )
         return result.scalar_one_or_none() is not None
 
-    async def _news_context(
-        self, symbol: str, on: date
-    ) -> tuple[bool, float]:
+    async def _news_context(self, symbol: str, on: date) -> tuple[bool, float]:
         """
         Returns (has_high_impact_news_today, sentiment_pulse_today).
         High-impact = any earnings/regulatory/mna/scandal article today.
         """
-        from datetime import datetime, time, timezone
+        from datetime import datetime, time
 
-        start = datetime.combine(on, time.min, tzinfo=timezone.utc)
-        end = datetime.combine(on, time.max, tzinfo=timezone.utc)
+        start = datetime.combine(on, time.min, tzinfo=UTC)
+        end = datetime.combine(on, time.max, tzinfo=UTC)
 
         rows = (
             await self._db.execute(

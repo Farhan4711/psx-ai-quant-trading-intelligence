@@ -79,7 +79,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # lazily on attribute access so the engine isn't built at import time.
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> AsyncEngine | async_sessionmaker[AsyncSession]:
     if name == "engine":
         return get_engine()
     if name == "AsyncSessionLocal":

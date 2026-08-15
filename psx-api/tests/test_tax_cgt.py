@@ -9,13 +9,12 @@ from psx_api.tax.cgt import (
     BuyLot,
     CgtResult,
     InsufficientLotsError,
-    NoApplicableTaxRule,
+    NoApplicableTaxRuleError,
     TaxBracket,
     calculate_cgt,
     find_bracket,
     match_fifo,
 )
-
 
 # ── Bracket fixtures matching the seed data in migration 0006 ──────────────
 
@@ -115,7 +114,7 @@ class TestFindBracket:
         assert b.rate_pct == Decimal("0.0")
 
     def test_no_match_raises(self, brackets: list[TaxBracket]) -> None:
-        with pytest.raises(NoApplicableTaxRule):
+        with pytest.raises(NoApplicableTaxRuleError):
             find_bracket(
                 brackets,
                 sell_date=date(2020, 1, 1),  # before any rule's effective_from

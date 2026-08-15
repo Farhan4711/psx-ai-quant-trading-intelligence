@@ -31,9 +31,7 @@ class User(Base):
     knowledge_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     risk_profile_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # Phase 4 (Step 59): opt-in to anonymous benchmarking + age bucketing
-    share_anonymously: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    share_anonymously: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     # TOTP second factor
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -78,9 +76,7 @@ class UserSession(Base):
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
 
-    __table_args__ = (
-        Index("ix_user_sessions_user_id_expires", "user_id", "expires_at"),
-    )
+    __table_args__ = (Index("ix_user_sessions_user_id_expires", "user_id", "expires_at"),)
 
     def __repr__(self) -> str:
         return f"<UserSession {self.user_id} exp={self.expires_at}>"

@@ -1,11 +1,11 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
 from psx_api.config import settings
 
 config = context.config
@@ -17,10 +17,10 @@ if config.config_file_name is not None:
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Import all models so Alembic autogenerate can detect schema changes
-from psx_api.models import Base  # noqa: F401 — side-effect import registers all models
+import psx_api.models.corporate_actions
+import psx_api.models.ohlcv
 import psx_api.models.securities  # noqa: F401
-import psx_api.models.ohlcv  # noqa: F401
-import psx_api.models.corporate_actions  # noqa: F401
+from psx_api.models import Base
 
 target_metadata = Base.metadata
 

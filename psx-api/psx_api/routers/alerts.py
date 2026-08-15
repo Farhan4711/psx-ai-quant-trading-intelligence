@@ -17,7 +17,7 @@ from psx_api.services.auth_service import AuthService
 router = APIRouter(prefix="/api/v1", tags=["alerts"])
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
-RedisDep = Annotated[Redis, Depends(get_redis)]  # type: ignore[type-arg]
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 async def _current_user(
@@ -37,9 +37,7 @@ async def _current_user(
 CurrentUser = Annotated[object, Depends(_current_user)]
 
 
-@router.get(
-    "/securities/{symbol}/suspicious-state", response_model=StockSuspiciousState
-)
+@router.get("/securities/{symbol}/suspicious-state", response_model=StockSuspiciousState)
 async def get_suspicious_state(symbol: str, db: DbDep) -> StockSuspiciousState:
     """Latest suspicious-day flag for the stock detail page banner."""
     service = AlertService(db)
@@ -55,6 +53,7 @@ async def list_alerts_for_user(
     db: DbDep, current_user: CurrentUser, limit: int = 50
 ) -> list[SuspiciousDayResponse]:
     from psx_api.models.users import User
+
     user: User = current_user  # type: ignore[assignment]
     service = AlertService(db)
     rows = await service.for_user(user.id, limit=limit)

@@ -17,28 +17,28 @@ user's prefs; default to True if the key is missing so a new
 notification kind isn't silently muted for existing users.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision: str = "0017"
-down_revision: Union[str, None] = "0016"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "0016"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 _DEFAULT_PREFS = (
-    '{'
+    "{"
     '"pump_dump": true, '
     '"kmi_delisting": true, '
     '"goal_milestone": true, '
     '"payment_events": true, '
     '"weekly_summary": true, '
     '"system": true'
-    '}'
+    "}"
 )
 
 

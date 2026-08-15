@@ -13,16 +13,16 @@ single indicator as a buy/sell instruction.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 Signal = Literal["bullish", "bearish", "neutral"]
 
 
-def _pkg(signal: Signal, summary: str, explainer: str, value: dict) -> dict:
+def _pkg(signal: Signal, summary: str, explainer: str, value: dict[str, Any]) -> dict[str, Any]:
     return {"signal": signal, "summary": summary, "explainer": explainer, "value": value}
 
 
-def interpret_rsi(value: float | None) -> dict:
+def interpret_rsi(value: float | None) -> dict[str, Any]:
     explainer = (
         "**RSI (Relative Strength Index)** measures how fast a stock has been "
         "rising or falling on a 0–100 scale. Above 70 is traditionally called "
@@ -57,7 +57,9 @@ def interpret_rsi(value: float | None) -> dict:
     )
 
 
-def interpret_macd(macd: float | None, signal_v: float | None, hist: float | None) -> dict:
+def interpret_macd(
+    macd: float | None, signal_v: float | None, hist: float | None
+) -> dict[str, Any]:
     explainer = (
         "**MACD (Moving Average Convergence Divergence)** plots the difference "
         "between a fast and slow exponential moving average, plus a signal line "
@@ -97,7 +99,7 @@ def interpret_macd(macd: float | None, signal_v: float | None, hist: float | Non
     )
 
 
-def interpret_sma(close: float | None, sma_value: float | None, period: int) -> dict:
+def interpret_sma(close: float | None, sma_value: float | None, period: int) -> dict[str, Any]:
     explainer = (
         f"**SMA-{period} (Simple Moving Average)** is the average closing price "
         f"over the last {period} days. It smooths out daily noise and shows "
@@ -130,7 +132,7 @@ def interpret_sma(close: float | None, sma_value: float | None, period: int) -> 
     )
 
 
-def interpret_ema(close: float | None, ema_value: float | None, period: int) -> dict:
+def interpret_ema(close: float | None, ema_value: float | None, period: int) -> dict[str, Any]:
     base = interpret_sma(close, ema_value, period)
     base["explainer"] = (
         f"**EMA-{period} (Exponential Moving Average)** is like SMA but weights "
@@ -143,7 +145,7 @@ def interpret_ema(close: float | None, ema_value: float | None, period: int) -> 
 
 def interpret_bollinger(
     close: float | None, upper: float | None, middle: float | None, lower: float | None
-) -> dict:
+) -> dict[str, Any]:
     explainer = (
         "**Bollinger Bands** wrap a 20-day moving average with bands two "
         "standard deviations above and below. Most price action stays inside "
@@ -184,7 +186,7 @@ def interpret_bollinger(
     )
 
 
-def interpret_stochastic(k: float | None, d: float | None) -> dict:
+def interpret_stochastic(k: float | None, d: float | None) -> dict[str, Any]:
     explainer = (
         "**Stochastic Oscillator** measures where today's close sits within "
         "the recent high–low range, on a 0–100 scale. Above 80 is overbought, "
@@ -192,7 +194,9 @@ def interpret_stochastic(k: float | None, d: float | None) -> dict:
         "trends can pin %K at the extremes."
     )
     if k is None or d is None:
-        return _pkg("neutral", "Not enough history to compute Stochastic.", explainer, {"k": k, "d": d})
+        return _pkg(
+            "neutral", "Not enough history to compute Stochastic.", explainer, {"k": k, "d": d}
+        )
     if k > 80:
         return _pkg(
             "bearish",
@@ -215,7 +219,7 @@ def interpret_stochastic(k: float | None, d: float | None) -> dict:
     )
 
 
-def interpret_obv(latest: float | None, week_ago: float | None) -> dict:
+def interpret_obv(latest: float | None, week_ago: float | None) -> dict[str, Any]:
     explainer = (
         "**OBV (On-Balance Volume)** adds up volume on up-days and subtracts "
         "it on down-days. Rising OBV = volume is supporting the uptrend. "
@@ -252,7 +256,7 @@ def interpret_obv(latest: float | None, week_ago: float | None) -> dict:
     )
 
 
-def interpret_atr(atr_value: float | None, close: float | None) -> dict:
+def interpret_atr(atr_value: float | None, close: float | None) -> dict[str, Any]:
     explainer = (
         "**ATR (Average True Range)** measures average daily volatility in PKR. "
         "It's not directional — it just tells you how much the stock typically "

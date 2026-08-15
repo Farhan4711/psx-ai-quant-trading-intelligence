@@ -21,7 +21,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 MODEL_VERSION_LEXICON = "lexicon-v0.1.0"
 MODEL_VERSION_FINBERT = "finbert-prosus-v1"
 
@@ -156,13 +155,38 @@ _NEGATORS = frozenset({"not", "no", "never", "n't", "without", "fails", "failed"
 
 
 _EVENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("earnings", re.compile(r"\b(earnings|quarterly results|profit after tax|revenue|EPS|bottom[- ]line)\b", re.I)),
+    (
+        "earnings",
+        re.compile(
+            r"\b(earnings|quarterly results|profit after tax|revenue|EPS|bottom[- ]line)\b", re.I
+        ),
+    ),
     ("guidance", re.compile(r"\b(guidance|forecast|outlook)\b", re.I)),
     ("mna", re.compile(r"\b(merger|acquisition|takeover|buyout|acquir(?:e|ed|ing)|m&a)\b", re.I)),
-    ("regulatory", re.compile(r"\b(SECP|SBP|FBR|regulator|regulatory|policy rate|tariff|tax(?: on)?|circular)\b", re.I)),
-    ("leadership", re.compile(r"\b(CEO|chairman|chairperson|chief executive|director|board|resign(?:ed|ation)?|appointed)\b", re.I)),
-    ("scandal", re.compile(r"\b(fraud|scandal|investigation|probe|insider trading|manipulation)\b", re.I)),
-    ("macro", re.compile(r"\b(KIBOR|inflation|CPI|PKR/USD|rupee|IMF|fiscal deficit|current account)\b", re.I)),
+    (
+        "regulatory",
+        re.compile(
+            r"\b(SECP|SBP|FBR|regulator|regulatory|policy rate|tariff|tax(?: on)?|circular)\b", re.I
+        ),
+    ),
+    (
+        "leadership",
+        re.compile(
+            r"\b(CEO|chairman|chairperson|chief executive|director|board|"
+            r"resign(?:ed|ation)?|appointed)\b",
+            re.I,
+        ),
+    ),
+    (
+        "scandal",
+        re.compile(r"\b(fraud|scandal|investigation|probe|insider trading|manipulation)\b", re.I),
+    ),
+    (
+        "macro",
+        re.compile(
+            r"\b(KIBOR|inflation|CPI|PKR/USD|rupee|IMF|fiscal deficit|current account)\b", re.I
+        ),
+    ),
 ]
 
 
@@ -178,7 +202,7 @@ def _classify_event(text: str) -> str:
 
 @dataclass(frozen=True)
 class SentimentResult:
-    polarity: float           # in [-1, +1]
+    polarity: float  # in [-1, +1]
     event_type: str
     model_version: str
 
@@ -190,7 +214,9 @@ def score_lexicon(text: str) -> SentimentResult:
     Polarity = (pos - neg) / max(pos + neg, 1), clamped to [-1, +1].
     """
     if not text:
-        return SentimentResult(polarity=0.0, event_type="general", model_version=MODEL_VERSION_LEXICON)
+        return SentimentResult(
+            polarity=0.0, event_type="general", model_version=MODEL_VERSION_LEXICON
+        )
 
     tokens = re.findall(r"[A-Za-z']+", text.lower())
     pos = 0

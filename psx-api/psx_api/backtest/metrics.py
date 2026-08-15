@@ -14,7 +14,6 @@ from math import sqrt
 
 from psx_api.backtest.engine import BacktestRun
 
-
 _TRADING_DAYS = 252
 
 
@@ -31,8 +30,8 @@ class BacktestMetrics:
     avg_losing_trade_pct: float
     avg_holding_days: float
     total_commissions_pkr: float
-    benchmark_return_pct: float        # buy-and-hold over the same period
-    excess_return_pct: float           # strategy − benchmark
+    benchmark_return_pct: float  # buy-and-hold over the same period
+    excess_return_pct: float  # strategy − benchmark
 
 
 def compute_metrics(run: BacktestRun, *, benchmark_return_pct: float) -> BacktestMetrics:
@@ -50,7 +49,7 @@ def compute_metrics(run: BacktestRun, *, benchmark_return_pct: float) -> Backtes
 
     # Sharpe from daily equity returns
     daily_returns: list[float] = []
-    for prev, curr in zip(run.equity_curve, run.equity_curve[1:]):
+    for prev, curr in zip(run.equity_curve, run.equity_curve[1:], strict=False):
         if prev.equity_pkr > 0:
             daily_returns.append((curr.equity_pkr - prev.equity_pkr) / prev.equity_pkr)
     if daily_returns:

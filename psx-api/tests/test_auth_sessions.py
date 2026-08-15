@@ -6,7 +6,7 @@ Tests for the new auth surface (Phase 9 Steps 87-90):
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -37,7 +37,7 @@ def _session(
     s.token_hash = _sha256(token)
     s.user_agent = "Mozilla/5.0 (Macintosh; Chrome/130) Safari/537"
     s.ip_address = "203.0.113.1"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     s.created_at = now - timedelta(hours=1)
     s.expires_at = now - timedelta(minutes=1) if expired else now + timedelta(days=30)
     return s  # type: ignore[return-value]
@@ -166,7 +166,7 @@ async def test_revoke_other_sessions_no_current_token_deletes_all() -> None:
 
 @pytest.mark.asyncio
 async def test_resend_verification_already_verified_raises() -> None:
-    user = _user(email_verified_at=datetime.now(tz=timezone.utc))
+    user = _user(email_verified_at=datetime.now(tz=UTC))
     service, _ = _make_service([])
     with pytest.raises(AuthError) as exc:
         await service.resend_verification_email(user)

@@ -28,6 +28,7 @@ Coverage:
 
 from __future__ import annotations
 
+from psx_api.services.payments.allied_payfast import AlliedPayFastGateway
 from psx_api.services.payments.base import (
     CallbackResult,
     CheckoutContext,
@@ -35,14 +36,12 @@ from psx_api.services.payments.base import (
     GatewayError,
     PaymentGateway,
 )
-from psx_api.services.payments.allied_payfast import AlliedPayFastGateway
 from psx_api.services.payments.easypaisa import EasypaisaGateway
 from psx_api.services.payments.jazzcash import JazzCashGateway
 from psx_api.services.payments.manual import ManualBankTransferGateway
 from psx_api.services.payments.meezan import MeezanIPGGateway
 from psx_api.services.payments.nayapay import NayaPayGateway
 from psx_api.services.payments.safepay import SafePayGateway
-
 
 # Provider slug → constructor. Keep slugs in sync with the
 # `ck_payment_intents_provider` CHECK in migration 0015.
@@ -60,8 +59,7 @@ _REGISTRY: dict[str, type[PaymentGateway]] = {
 def get_gateway(provider: str) -> PaymentGateway:
     if provider not in _REGISTRY:
         raise GatewayError(
-            f"Unknown payment provider '{provider}'. "
-            f"Supported: {sorted(_REGISTRY)}"
+            f"Unknown payment provider '{provider}'. " f"Supported: {sorted(_REGISTRY)}"
         )
     return _REGISTRY[provider]()
 

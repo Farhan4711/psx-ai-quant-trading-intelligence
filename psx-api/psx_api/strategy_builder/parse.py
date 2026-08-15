@@ -29,24 +29,23 @@ clauses. When this becomes limiting we'll grow it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Callable, Sequence
+from collections.abc import Callable
+from typing import Any
 
-from psx_api.backtest.engine import Bar
+from psx_api.backtest.engine import Bar, StrategyFn
 from psx_api.indicators import compute
-
 
 # ── Errors ──────────────────────────────────────────────────────────────
 
 
-class InvalidStrategy(ValueError):
+class InvalidStrategyError(ValueError):
     """User-facing parsing/validation error — surfaced as 400."""
 
 
 # ── Operand evaluation ──────────────────────────────────────────────────
 
 
-def _eval_operand(operand: dict, bars: list[Bar], i: int) -> float | None:
+def _eval_operand(operand: dict[str, Any], bars: list[Bar], i: int) -> float | None:
     kind = operand.get("kind")
     closes = [b.close for b in bars[: i + 1]]
 
@@ -54,7 +53,7 @@ def _eval_operand(operand: dict, bars: list[Bar], i: int) -> float | None:
         try:
             return float(operand["value"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise InvalidStrategy(f"Bad constant: {operand}") from exc
+            raise InvalidStrategyError(f"Bad constant: {operand}") from exc
 
     if kind == "price":
         return closes[-1] if closes else None
@@ -81,12 +80,12 @@ def _eval_operand(operand: dict, bars: list[Bar], i: int) -> float | None:
             return compute.atr(highs, lows, closes, period=period)[-1]
         if name == "volume":
             return bars[i].volume if i < len(bars) else None
-        raise InvalidStrategy(f"Unknown indicator '{name}'")
+        raise InvalidStrategyError(f"Unknown indicator '{name}'")
 
-    raise InvalidStrategy(f"Unknown operand kind '{kind}'")
+    raise InvalidStrategyError(f"Unknown operand kind '{kind}'")
 
 
-_OPS = {
+_OPS: dict[str, Callable[[float, float], bool]] = {
     "<": lambda a, b: a < b,
     "<=": lambda a, b: a <= b,
     ">": lambda a, b: a > b,
@@ -95,7 +94,7 @@ _OPS = {
 }
 
 
-def _eval_condition(cond: dict, bars: list[Bar], i: int) -> bool:
+def _eval_condition(cond: dict[str, Any], bars: list[Bar], i: int) -> bool:
     # Special case: holding_days_gt — only the engine wrapper knows
     # how many days a position has been open. Surfaced as a separate
     # exit clause; if seen here, it's the caller's responsibility.
@@ -104,7 +103,7 @@ def _eval_condition(cond: dict, bars: list[Bar], i: int) -> bool:
 
     op = cond.get("operator")
     if op not in _OPS:
-        raise InvalidStrategy(f"Unknown operator '{op}'")
+        raise InvalidStrategyError(f"Unknown operator '{op}'")
     left = _eval_operand(cond.get("left", {}), bars, i)
     right = _eval_operand(cond.get("right", {}), bars, i)
     if left is None or right is None:
@@ -112,7 +111,7 @@ def _eval_condition(cond: dict, bars: list[Bar], i: int) -> bool:
     return _OPS[op](left, right)
 
 
-def _eval_group(group: dict, bars: list[Bar], i: int) -> bool:
+def _eval_group(group: dict[str, Any], bars: list[Bar], i: int) -> bool:
     if "all_of" in group:
         return all(_eval_condition(c, bars, i) for c in group["all_of"])
     if "any_of" in group:
@@ -120,31 +119,39 @@ def _eval_group(group: dict, bars: list[Bar], i: int) -> bool:
     # Single condition shorthand
     if "operator" in group or "kind" in group:
         return _eval_condition(group, bars, i)
-    raise InvalidStrategy(f"Group must have all_of or any_of: {group}")
+    raise InvalidStrategyError(f"Group must have all_of or any_of: {group}")
 
 
 # ── Public API ──────────────────────────────────────────────────────────
 
 
-def validate(rules: dict) -> None:
-    """Raises InvalidStrategy if `rules` is malformed."""
+def validate(rules: dict[str, Any]) -> None:
+    """Raises InvalidStrategyError if `rules` is malformed."""
     if not isinstance(rules, dict):
-        raise InvalidStrategy("Rules must be an object.")
+        raise InvalidStrategyError("Rules must be an object.")
     if "entry" not in rules:
-        raise InvalidStrategy("Rules must include an `entry` clause.")
+        raise InvalidStrategyError("Rules must include an `entry` clause.")
     # exit is optional; if missing we trade buy-and-hold semantics
     # Walk and try to evaluate against a tiny synthetic dataset to surface
     # parser errors early.
     synthetic = [
-        Bar(date=__import__("datetime").date(2024, 1, i + 1), open=100.0, high=101.0, low=99.0, close=100.0, adjusted_close=100.0, volume=1000.0)
+        Bar(
+            date=__import__("datetime").date(2024, 1, i + 1),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.0,
+            adjusted_close=100.0,
+            volume=1000.0,
+        )
         for i in range(20)
     ]
     try:
         _eval_group(rules["entry"], synthetic, len(synthetic) - 1)
-    except InvalidStrategy:
+    except InvalidStrategyError:
         raise
     except Exception as exc:
-        raise InvalidStrategy(f"Entry rule failed validation: {exc}") from exc
+        raise InvalidStrategyError(f"Entry rule failed validation: {exc}") from exc
 
     if "exit" in rules:
         try:
@@ -152,13 +159,13 @@ def validate(rules: dict) -> None:
             exit_clean = _strip_meta(rules["exit"])
             if exit_clean:
                 _eval_group(exit_clean, synthetic, len(synthetic) - 1)
-        except InvalidStrategy:
+        except InvalidStrategyError:
             raise
         except Exception as exc:
-            raise InvalidStrategy(f"Exit rule failed validation: {exc}") from exc
+            raise InvalidStrategyError(f"Exit rule failed validation: {exc}") from exc
 
 
-def _strip_meta(group: dict) -> dict | None:
+def _strip_meta(group: dict[str, Any]) -> dict[str, Any] | None:
     """Drop holding_days_gt clauses for parser-only validation."""
     if "all_of" in group or "any_of" in group:
         key = "all_of" if "all_of" in group else "any_of"
@@ -171,9 +178,7 @@ def _strip_meta(group: dict) -> dict | None:
     return group
 
 
-def build_strategy(
-    rules: dict,
-) -> Callable[[list[Bar], int], "int | tuple[int, str]"]:
+def build_strategy(rules: dict[str, Any]) -> StrategyFn:
     """
     Returns a StrategyFn matching the engine contract. Captures internal
     state (entry index) so the holding_days_gt exit clause works.
@@ -182,7 +187,7 @@ def build_strategy(
     state = {"long": False, "entry_index": -1}
     holding_days_max = _holding_days_max(rules.get("exit"))
 
-    def strategy(bars: list[Bar], i: int):
+    def strategy(bars: list[Bar], i: int) -> int | tuple[int, str]:
         if not state["long"]:
             if _eval_group(rules["entry"], bars, i):
                 state["long"] = True
@@ -207,10 +212,10 @@ def build_strategy(
     return strategy
 
 
-def _holding_days_max(exit_group: dict | None) -> int | None:
+def _holding_days_max(exit_group: dict[str, Any] | None) -> int | None:
     if not exit_group:
         return None
-    nodes: list[dict] = []
+    nodes: list[dict[str, Any]] = []
     if "all_of" in exit_group:
         nodes = exit_group["all_of"]
     elif "any_of" in exit_group:

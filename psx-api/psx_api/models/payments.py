@@ -8,7 +8,7 @@ See migration 0015 for column-level commentary.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -38,25 +38,17 @@ class PaymentIntent(Base):
         nullable=False,
     )
     provider: Mapped[str] = mapped_column(String(40), nullable=False)
-    billing_cycle: Mapped[str] = mapped_column(
-        String(10), nullable=False, server_default="monthly"
-    )
+    billing_cycle: Mapped[str] = mapped_column(String(10), nullable=False, server_default="monthly")
     amount_pkr: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     merchant_txn_ref: Mapped[str] = mapped_column(String(60), nullable=False, unique=True)
     gateway_txn_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    request_payload: Mapped[Any] = mapped_column(
-        JSONB, nullable=False, server_default="{}"
-    )
+    request_payload: Mapped[Any] = mapped_column(JSONB, nullable=False, server_default="{}")
     response_payload: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
     checkout_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    returned_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-    expires_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False
-    )
+    returned_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )

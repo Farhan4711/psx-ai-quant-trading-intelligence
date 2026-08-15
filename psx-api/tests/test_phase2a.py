@@ -8,13 +8,12 @@ import pytest
 from psx_api.goals.allocation import horizon_bucket, recommend
 from psx_api.goals.tvm import _future_value, analyze
 from psx_api.risk.profile import (
-    InvalidAnswers,
     QUESTIONS,
+    InvalidAnswersError,
     archetype,
     evaluate,
     score,
 )
-
 
 # ── Risk profile ────────────────────────────────────────────────────────
 
@@ -51,13 +50,13 @@ class TestRiskScore:
     def test_unknown_option_rejected(self) -> None:
         answers = self._all_max()
         answers["rt1"] = "nonexistent"
-        with pytest.raises(InvalidAnswers):
+        with pytest.raises(InvalidAnswersError):
             score(answers)
 
     def test_missing_question_rejected(self) -> None:
         answers = self._all_max()
         del answers["kn1"]
-        with pytest.raises(InvalidAnswers):
+        with pytest.raises(InvalidAnswersError):
             score(answers)
 
     def test_low_knowledge_caps_archetype(self) -> None:
@@ -77,9 +76,7 @@ class TestRiskScore:
 class TestTvm:
     def test_future_value_zero_rate(self) -> None:
         # 12 months × 1000 + 0 PV = 12000
-        fv = _future_value(
-            present_value=0, monthly_contribution=1000, months=12, annual_rate=0
-        )
+        fv = _future_value(present_value=0, monthly_contribution=1000, months=12, annual_rate=0)
         assert fv == pytest.approx(12000)
 
     def test_future_value_compounds(self) -> None:

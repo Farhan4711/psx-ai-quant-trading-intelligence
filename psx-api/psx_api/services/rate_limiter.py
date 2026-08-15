@@ -17,7 +17,7 @@ _KEY_PREFIX = "rate_limit:login:"
 
 
 class LoginRateLimiter:
-    def __init__(self, redis: Redis) -> None:  # type: ignore[type-arg]
+    def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
     def _key(self, ip: str) -> str:

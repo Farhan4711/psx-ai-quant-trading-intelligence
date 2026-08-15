@@ -19,7 +19,6 @@ from pydantic import BaseModel, Field
 
 from psx_inference.inference import ModelRegistry, predict
 
-
 router = APIRouter(tags=["predict"])
 
 
@@ -72,8 +71,7 @@ def post_predict(payload: PredictRequest) -> PredictResponse:
     window: list[list[float]] | None = None
     if payload.window:
         window = [
-            [float(row.get(name, 0.0)) for name in bundle.feature_names]
-            for row in payload.window
+            [float(row.get(name, 0.0)) for name in bundle.feature_names] for row in payload.window
         ]
 
     result = predict(bundle, vec, window=window)

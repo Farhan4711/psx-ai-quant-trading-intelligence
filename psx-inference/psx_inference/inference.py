@@ -49,9 +49,7 @@ logger = logging.getLogger(__name__)
 # ── Configuration ────────────────────────────────────────────────
 
 
-_DEFAULT_MODELS_DIR = (
-    Path(__file__).resolve().parents[2] / "models" / "onnx"
-)
+_DEFAULT_MODELS_DIR = Path(__file__).resolve().parents[2] / "models" / "onnx"
 """`psx-inference/models/onnx/` relative to this file."""
 
 # Has to match the order in `psx_api.predictions.features.FEATURE_NAMES`.
@@ -68,7 +66,7 @@ class InferenceBundle:
     """All ONNX sessions for one symbol, plus the manifest metadata."""
 
     symbol: str
-    sub_keys: list[str]      # e.g. ["xgb", "rf", "lstm"]
+    sub_keys: list[str]  # e.g. ["xgb", "rf", "lstm"]
     feature_names: list[str]
     lstm_window: int
     sub_sessions: dict[str, Any] = field(default_factory=dict)
@@ -81,7 +79,7 @@ class PredictionResult:
 
     symbol: str
     prob_up: float
-    confidence: str          # "low" | "medium" | "high"
+    confidence: str  # "low" | "medium" | "high"
     sub_probabilities: dict[str, float]
     predictions_disabled: bool
     reason: str | None
@@ -94,7 +92,7 @@ class PredictionResult:
 class ModelRegistry:
     """Thread-safe lazy-singleton wrapping all the loaded bundles."""
 
-    _instance: "ModelRegistry | None" = None
+    _instance: ModelRegistry | None = None
     _lock = threading.Lock()
 
     def __init__(self, models_dir: Path) -> None:
@@ -103,7 +101,7 @@ class ModelRegistry:
         self._loaded = False
 
     @classmethod
-    def get(cls, models_dir: Path | None = None) -> "ModelRegistry":
+    def get(cls, models_dir: Path | None = None) -> ModelRegistry:
         # Double-checked locking — fast path is lock-free.
         if cls._instance is None:
             with cls._lock:
@@ -126,7 +124,7 @@ class ModelRegistry:
 
         # Lazy-import onnxruntime — keeps test environments without it
         # from blowing up at module import time.
-        import onnxruntime as ort  # noqa: PLC0415
+        import onnxruntime as ort
 
         sym_count = 0
         for sym_dir in sorted(self.models_dir.iterdir()):
